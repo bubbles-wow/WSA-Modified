@@ -1,3 +1,2 @@
-base64
 requests
 packaging
