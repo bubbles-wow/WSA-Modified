@@ -23,6 +23,8 @@ import logging
 import os
 import re
 import sys
+import requests
+import base64
 
 from pathlib import Path
 from threading import Thread
@@ -69,6 +71,17 @@ if ms_account_conf.is_file():
     with open(ms_account_conf, "r") as f:
         conf = Prop(f.read())
         user = conf.get('user_code')
+try:
+    response = requests.get("https://api.github.com/repos/bubbles-wow/MS-Account-Token/contents/token.cfg")
+    while response.status_code != 200:
+        response = requests.get("https://api.github.com/repos/bubbles-wow/MS-Account-Token/contents/token.cfg")
+    content = response.json()["content"]
+    content = content.encode("utf-8")
+    content = base64.b64decode(content)
+    text = content.decode("utf-8")
+    user_code = Prop(text).get("user_code")
+except:
+    exit("Failed to get user code from github")
 print(f"Generating WSA download link: arch={arch} release_type={release_name}\n", flush=True)
 with open(Path.cwd().parent / ("xml/GetCookie.xml"), "r") as f:
     cookie_content = f.read().format(user)

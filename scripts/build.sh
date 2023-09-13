@@ -236,6 +236,7 @@ while [[ $# -gt 0 ]]; do
         --compress-format   ) COMPRESS_FORMAT="$2"; shift 2 ;;
         --remove-amazon     ) REMOVE_AMAZON="yes"; shift ;;
         --magisk-ver        ) MAGISK_VER="$2"; shift 2 ;;
+        --offline           ) OFFLINE="on"; shift ;;
         --                  ) shift; break;;
    esac
 done
@@ -301,13 +302,14 @@ update_gapps_zip_name() {
     GAPPS_ZIP_NAME=MindTheGapps-$ARCH-13.0.zip
     GAPPS_PATH=$DOWNLOAD_DIR/$GAPPS_ZIP_NAME
 }
+if [ "$OFFLINE" != "on"]; then
 echo "Generate Download Links"
 if [ "$RELEASE_TYPE" != "latest" ]; then
     python3 generateWSALinks.py "$ARCH" "$RELEASE_TYPE" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
     # shellcheck disable=SC1090
     source "$WSA_WORK_ENV" || abort
 else
-    printf "%s\n" "$(curl -sL https://api.github.com/repos/YT-Advanced/WSAPackage/releases/latest | jq -r '.assets[] | .browser_download_url')" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+    printf "%s\n" "$(curl -sL https://api.github.com/repos/bubbles-wow/WSA-Archive/releases/latest | jq -r '.assets[] | .browser_download_url')" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     printf "  out=wsa-latest.zip\n" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     mkdir -p "$DOWNLOAD_DIR/xaml"
@@ -320,8 +322,8 @@ else
     printf "https://cdn.glitch.global/847a3043-7118-4fd2-8853-fe9756f88702/Microsoft.VCLibs.140.00_14.0.32530.0_%s__8wekyb3d8bbwe.Appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     printf "  out=Microsoft.VCLibs.140.00_%s.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    WSA_VER=$(curl -sL https://api.github.com/repos/YT-Advanced/WSAPackage/releases/latest | jq -r '.tag_name')
-    WSA_MAJOR_VER=${WSA_VER:1:4}
+    WSA_VER=$(curl -sL https://api.github.com/repos/bubbles-wow/WSA-Archive/releases/latest | jq -r '.tag_name')
+    WSA_MAJOR_VER=${WSA_VER:0:3}
 fi
 if [ "$ROOT_SOL" = "magisk" ] || [ "$GAPPS_BRAND" != "none" ]; then
     python3 generateMagiskLink.py "$MAGISK_VER" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
@@ -342,6 +344,7 @@ echo "Download Artifacts"
 if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity=true --continue=true --allow-overwrite=true --conditional-get=true -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME"; then
     echo "We have encountered an error while downloading files."
     exit 1
+fi
 fi
 
 echo "Extract WSA"
