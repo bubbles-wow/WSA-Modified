@@ -43,6 +43,7 @@ jobs:
         run: |
           WORK_DIR=$(mktemp -d -t wsa-build-XXXXXXXXXX_) || exit 1
           WSA_WORK_ENV="${WORK_DIR:?}/ENV"
+          source $WSA_WORK_ENV
           DOWNLOAD_DIR=../download
           DOWNLOAD_CONF_NAME=download.list
           echo "Generate Download Links"
