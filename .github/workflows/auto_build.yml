@@ -44,6 +44,7 @@ jobs:
           DOWNLOAD_DIR=../download
           DOWNLOAD_CONF_NAME=download.list
           echo "Generate Download Links"
+          pip install -r scripts/requirements.txt
           python3 ./scripts/generateWSALinks.py x64 WIF "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
           python3 ./scripts/generateWSALinks.py arm64 WIF "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
           python3 ./scripts/generateMagiskLink.py stable "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
