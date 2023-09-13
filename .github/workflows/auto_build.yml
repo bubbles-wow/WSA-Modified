@@ -1,4 +1,4 @@
-name: Custom Build
+name: Auto Build (test)
 
 on:
   workflow_dispatch:
