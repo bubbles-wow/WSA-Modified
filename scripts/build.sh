@@ -303,48 +303,50 @@ update_gapps_zip_name() {
     GAPPS_PATH=$DOWNLOAD_DIR/$GAPPS_ZIP_NAME
 }
 if [ "$OFFLINE" != "on"]; then
-echo "Generate Download Links"
-if [ "$RELEASE_TYPE" != "latest" ]; then
-    python3 generateWSALinks.py "$ARCH" "$RELEASE_TYPE" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
-    # shellcheck disable=SC1090
-    source "$WSA_WORK_ENV" || abort
+    echo "Generate Download Links"
+    if [ "$RELEASE_TYPE" != "latest" ]; then
+        python3 generateWSALinks.py "$ARCH" "$RELEASE_TYPE" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
+        # shellcheck disable=SC1090
+        source "$WSA_WORK_ENV" || abort
+    else
+        printf "%s\n" "$(curl -sL https://api.github.com/repos/bubbles-wow/WSA-Archive/releases/latest | jq -r '.assets[] | .browser_download_url')" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+        printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+        printf "  out=wsa-latest.zip\n" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+        mkdir -p "$DOWNLOAD_DIR/xaml"
+        curl -sO "https://globalcdn.nuget.org/packages/microsoft.ui.xaml.2.8.4.nupkg" --output-dir "$DOWNLOAD_DIR/xaml"
+        7z x $DOWNLOAD_DIR/xaml/*.nupkg -o../download/ | tail -4
+        mv "$DOWNLOAD_DIR/tools/AppX/$ARCH/Release/Microsoft.UI.Xaml.2.8.appx" "$xaml_PATH"
+        printf "https://aka.ms/Microsoft.VCLibs.%s.14.00.Desktop.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+        printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+        printf "  out=Microsoft.VCLibs.140.00.UWPDesktop_%s.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+        printf "https://cdn.glitch.global/847a3043-7118-4fd2-8853-fe9756f88702/Microsoft.VCLibs.140.00_14.0.32530.0_%s__8wekyb3d8bbwe.Appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+        printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+        printf "  out=Microsoft.VCLibs.140.00_%s.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
+        WSA_VER=$(curl -sL https://api.github.com/repos/bubbles-wow/WSA-Archive/releases/latest | jq -r '.tag_name')
+        WSA_MAJOR_VER=${WSA_VER:0:3}
+    fi
+    if [ "$ROOT_SOL" = "magisk" ] || [ "$GAPPS_BRAND" != "none" ]; then
+        python3 generateMagiskLink.py "$MAGISK_VER" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
+    fi
+    if [ "$ROOT_SOL" = "kernelsu" ]; then
+        update_ksu_zip_name
+        python3 generateKernelSULink.py "$ARCH" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" "$KERNEL_VER" "$KERNELSU_ZIP_NAME" || abort
+        # shellcheck disable=SC1090
+        source "$WSA_WORK_ENV" || abort
+        # shellcheck disable=SC2153
+        echo "KERNELSU_VER=$KERNELSU_VER" >"$KERNELSU_INFO"
+    fi
+    if [ "$GAPPS_BRAND" != "none" ]; then
+        update_gapps_zip_name
+        python3 generateGappsLink.py "$ARCH" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" "$GAPPS_ZIP_NAME" || abort
+    fi
+    echo "Download Artifacts"
+    if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity=true --continue=true --allow-overwrite=true --conditional-get=true -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME"; then
+        echo "We have encountered an error while downloading files."
+        exit 1
+    fi
 else
-    printf "%s\n" "$(curl -sL https://api.github.com/repos/bubbles-wow/WSA-Archive/releases/latest | jq -r '.assets[] | .browser_download_url')" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    printf "  out=wsa-latest.zip\n" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    mkdir -p "$DOWNLOAD_DIR/xaml"
-    curl -sO "https://globalcdn.nuget.org/packages/microsoft.ui.xaml.2.8.4.nupkg" --output-dir "$DOWNLOAD_DIR/xaml"
-    7z x $DOWNLOAD_DIR/xaml/*.nupkg -o../download/ | tail -4
-    mv "$DOWNLOAD_DIR/tools/AppX/$ARCH/Release/Microsoft.UI.Xaml.2.8.appx" "$xaml_PATH"
-    printf "https://aka.ms/Microsoft.VCLibs.%s.14.00.Desktop.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    printf "  out=Microsoft.VCLibs.140.00.UWPDesktop_%s.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    printf "https://cdn.glitch.global/847a3043-7118-4fd2-8853-fe9756f88702/Microsoft.VCLibs.140.00_14.0.32530.0_%s__8wekyb3d8bbwe.Appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    printf "  out=Microsoft.VCLibs.140.00_%s.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
-    WSA_VER=$(curl -sL https://api.github.com/repos/bubbles-wow/WSA-Archive/releases/latest | jq -r '.tag_name')
-    WSA_MAJOR_VER=${WSA_VER:0:3}
-fi
-if [ "$ROOT_SOL" = "magisk" ] || [ "$GAPPS_BRAND" != "none" ]; then
-    python3 generateMagiskLink.py "$MAGISK_VER" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
-fi
-if [ "$ROOT_SOL" = "kernelsu" ]; then
-    update_ksu_zip_name
-    python3 generateKernelSULink.py "$ARCH" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" "$KERNEL_VER" "$KERNELSU_ZIP_NAME" || abort
-    # shellcheck disable=SC1090
-    source "$WSA_WORK_ENV" || abort
-    # shellcheck disable=SC2153
-    echo "KERNELSU_VER=$KERNELSU_VER" >"$KERNELSU_INFO"
-fi
-if [ "$GAPPS_BRAND" != "none" ]; then
-    update_gapps_zip_name
-    python3 generateGappsLink.py "$ARCH" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" "$GAPPS_ZIP_NAME" || abort
-fi
-echo "Download Artifacts"
-if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity=true --continue=true --allow-overwrite=true --conditional-get=true -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME"; then
-    echo "We have encountered an error while downloading files."
-    exit 1
-fi
+    echo "Skip downloading artifacts"
 fi
 
 echo "Extract WSA"
