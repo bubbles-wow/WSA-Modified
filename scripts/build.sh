@@ -809,5 +809,5 @@ else
     echo "artifact=${artifact_name}.zip" >> "$GITHUB_OUTPUT"
 fi
 echo "Deleting work dir..."
-rm -r $WORK_DIR/wsa/$artifact_name
+rm -r "$WORK_DIR/wsa/$artifact_name"
 echo -e "Done\n"
