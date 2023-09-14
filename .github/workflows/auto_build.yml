@@ -43,7 +43,13 @@ jobs:
         run: |
           WORK_DIR=$(mktemp -d -t wsa-build-XXXXXXXXXX_) || exit 1
           WSA_WORK_ENV="${WORK_DIR:?}/ENV"
-          source $WSA_WORK_ENV
+          touch "$WSA_WORK_ENV"
+          export WSA_WORK_ENV
+          abort() {
+            [ "$1" ] && echo -e "ERROR: $1"
+            echo "Build: an error has occurred, exit"
+            exit 1
+          }
           DOWNLOAD_DIR=../download
           DOWNLOAD_CONF_NAME=download.list
           echo "Generate Download Links"
