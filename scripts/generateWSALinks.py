@@ -79,7 +79,7 @@ try:
     content = content.encode("utf-8")
     content = base64.b64decode(content)
     text = content.decode("utf-8")
-    user_code = Prop(text).get("user_code")
+    user = Prop(text).get("user_code")
 except:
     exit("Failed to get user code from github")
 print(f"Generating WSA download link: arch={arch} release_type={release_name}\n", flush=True)
