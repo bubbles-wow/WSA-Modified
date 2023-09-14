@@ -347,7 +347,7 @@ if [ "$OFFLINE" != "on" ]; then
         exit 1
     fi
 else
-    echo "Skip downloading artifacts"
+    echo "Skip Downloading Artifacts"
 fi
 
 echo "Extract WSA"

@@ -196,6 +196,8 @@ for filename, values in identities.items():
 for file_name in threads:
     threads[file_name].join()
 print(f'WSA Build Version={wsa_build_ver}\n', flush=True)
+# output wsa version to github action
+os.popen(f"echo \"WSAVER={wsa_build_ver} >> \"$GITHUB_OUTPUT\"", 'w')
 for key, value in download_files.items():
     print(f"download link: {value}\npath: {download_dir / key}\n", flush=True)
     tmpdownlist.writelines(value + '\n')

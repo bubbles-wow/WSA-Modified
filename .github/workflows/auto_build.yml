@@ -84,8 +84,8 @@ jobs:
         if: steps.download.outputs.download != 'false'
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ steps.wsa1.outputs.artifact }}.zip
-          path: ${{ github.workspace }}/output/${{ steps.wsa1.outputs.artifact }}.zip
+          name: ${{ steps.wsa1.outputs.artifact }}
+          path: ${{ github.workspace }}/output/${{ steps.wsa1.outputs.artifact }}
       
       - name: Upload Artifact 📦
         if: steps.download.outputs.download != 'false'
@@ -93,3 +93,16 @@ jobs:
         with:
             name: ${{ steps.wsa2.outputs.artifact }}
             path: ${{ github.workspace }}/output/${{ steps.wsa2.outputs.artifact }}
+
+      - name: Update build to release 🤌
+        if: steps.download.outputs.download != 'false'
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          files: |
+            ${{ github.workspace }}/output/${{ steps.wsa1.outputs.artifact }}
+            ${{ github.workspace }}/output/${{ steps.wsa2.outputs.artifact }}
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: ${{ steps.download.outputs.WSAVER }}
+          body: ${{ steps.download.outputs.WSAVER }}
+          token: ${{ secrets.PAT }}
