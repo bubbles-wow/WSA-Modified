@@ -70,39 +70,82 @@ jobs:
 
       - name: Build WSA 🏗️
         if: steps.download.outputs.download != 'false'
-        id: wsa1
+        id: wsa-1
         run: |
           ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --remove-amazon --compress-format zip
+          echo "md5=$(md5sum output/WSA-*.zip | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "sha256=$(sha256sum output/WSA-*.zip | awk '{print $1}')" >> $GITHUB_OUTPUT
 
-      - name: Build WSA 🏗️
+      - name: File Checksum ✔️
+        id: hash-1
         if: steps.download.outputs.download != 'false'
-        id: wsa2
         run: |
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --compress-format zip
+            filedir="${{ github.workspace }}/output/${{ steps.wsa-1.outputs.artifact }}"
+            md5_hash=$(md5sum "$filedir" | cut -d ' ' -f 1)
+            sha256_hash=$(sha256sum "$filedir" | cut -d ' ' -f 1)
+            md5_hash_lower=$(echo "$md5_hash" | tr '[:upper:]' '[:lower:]')
+            sha256_hash_lower=$(echo "$sha256_hash" | tr '[:upper:]' '[:lower:]')
+            echo "MD5=$md5_hash_lower" >> $GITHUB_OUTPUT
+            echo "SHA256=$sha256_hash_lower" >> $GITHUB_OUTPUT
+            echo "${{ steps.wsa-1.outputs.artifact }}"
+            echo "MD5=$md5_hash_lower"
+            echo "SHA256=$sha256_hash_lower"
 
       - name: Upload Artifact 📦
         if: steps.download.outputs.download != 'false'
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ steps.wsa1.outputs.artifact }}
-          path: ${{ github.workspace }}/output/${{ steps.wsa1.outputs.artifact }}
+          name: ${{ steps.wsa-1.outputs.artifact }}
+          path: ${{ github.workspace }}/output/${{ steps.wsa-1.outputs.artifact }}
+
+      - name: Build WSA 🏗️
+        if: steps.download.outputs.download != 'false'
+        id: wsa-2
+        run: |
+          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --compress-format zip
+      
+      - name: File Checksum ✔️
+        id: hash-2
+        if: steps.download.outputs.download != 'false'
+        run: |
+            filedir="${{ github.workspace }}/output/${{ steps.wsa-1.outputs.artifact }}"
+            md5_hash=$(md5sum "$filedir" | cut -d ' ' -f 1)
+            sha256_hash=$(sha256sum "$filedir" | cut -d ' ' -f 1)
+            md5_hash_lower=$(echo "$md5_hash" | tr '[:upper:]' '[:lower:]')
+            sha256_hash_lower=$(echo "$sha256_hash" | tr '[:upper:]' '[:lower:]')
+            echo "MD5=$md5_hash_lower" >> $GITHUB_OUTPUT
+            echo "SHA256=$sha256_hash_lower" >> $GITHUB_OUTPUT
+            echo "${{ steps.wsa-1.outputs.artifact }}"
+            echo "MD5=$md5_hash_lower"
+            echo "SHA256=$sha256_hash_lower"
       
       - name: Upload Artifact 📦
         if: steps.download.outputs.download != 'false'
         uses: actions/upload-artifact@v3
         with:
-            name: ${{ steps.wsa2.outputs.artifact }}
-            path: ${{ github.workspace }}/output/${{ steps.wsa2.outputs.artifact }}
+            name: ${{ steps.wsa-2.outputs.artifact }}
+            path: ${{ github.workspace }}/output/${{ steps.wsa-2.outputs.artifact }}
 
       - name: Update build to release 🤌
         if: steps.download.outputs.download != 'false'
         uses: softprops/action-gh-release@v0.1.15
         with:
           files: |
-            ${{ github.workspace }}/output/${{ steps.wsa1.outputs.artifact }}
-            ${{ github.workspace }}/output/${{ steps.wsa2.outputs.artifact }}
+            ${{ github.workspace }}/output/${{ steps.wsa-1.outputs.artifact }}
+            ${{ github.workspace }}/output/${{ steps.wsa-2.outputs.artifact }}
           fail_on_unmatched_files: true
           append_body: true
-          tag_name: ${{ steps.download.outputs.WSAVER }}
-          body: ${{ steps.download.outputs.WSAVER }}
+          tag_name: ${{ steps.wsa-1.outputs.WSAVER }}
+          body: |
+            ## Hashes
+            - ${{ steps.wsa-1.outputs.artifact }}
+            ```yaml
+            MD5: ${{ steps.hash-1.outputs.MD5 }}
+            SHA256: ${{ steps.hash-1.outputs.SHA256 }}
+            ```
+            - ${{ steps.wsa-2.outputs.artifact }}
+            ```yaml
+            MD5: ${{ steps.hash-2.outputs.MD5 }}
+            SHA256: ${{ steps.hash-2.outputs.SHA256 }}
+            ```
           token: ${{ secrets.PAT }}
