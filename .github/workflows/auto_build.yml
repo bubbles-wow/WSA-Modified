@@ -53,6 +53,7 @@ jobs:
             exit 1
           }
           trap abort INT TERM
+          pip install -r ./scripts/requirements.txt
           echo "Generate Download Links"
           cd ./scripts
           python3 generateWSALinks.py x64 WIF "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
