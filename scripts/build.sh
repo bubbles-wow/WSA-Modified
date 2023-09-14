@@ -213,6 +213,7 @@ ARGUMENT_LIST=(
     "root-sol:"
     "compress-format:"
     "remove-amazon"
+    "offline"
 )
 
 default
