@@ -41,7 +41,12 @@ jobs:
       - name: Download Files
         id: download
         run: |
+          cd "$(dirname "$0")" || exit 1
           WORK_DIR=$(mktemp -d -t wsa-build-XXXXXXXXXX_) || exit 1
+          DOWNLOAD_DIR=../download
+          DOWNLOAD_CONF_NAME=download.list
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          OUTPUT_DIR=../output
           WSA_WORK_ENV="${WORK_DIR:?}/ENV"
           touch "$WSA_WORK_ENV"
           export WSA_WORK_ENV
@@ -50,10 +55,8 @@ jobs:
             echo "Build: an error has occurred, exit"
             exit 1
           }
-          DOWNLOAD_DIR=../download
-          DOWNLOAD_CONF_NAME=download.list
+          trap abort INT TERM
           echo "Generate Download Links"
-          pip install -r scripts/requirements.txt
           cd ./scripts
           python3 generateWSALinks.py x64 WIF "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
           python3 generateWSALinks.py arm64 WIF "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
