@@ -32,7 +32,6 @@ from typing import Any, OrderedDict
 from xml.dom import minidom
 
 from requests import Session
-from packaging import version
 
 
 class Prop(OrderedDict):
@@ -171,7 +170,7 @@ for filename, values in identities.items():
         if(wsa_build_ver == 0):
             wsa_build_ver = tmp_wsa_build_ver
         else:
-            if version.parse(wsa_build_ver) < version.parse(tmp_wsa_build_ver):
+            if int(wsa_build_ver.split(".")[0]) < int(tmp_wsa_build_ver.split(".")[0]) or wsa_build_ver.split(".")[0] == tmp_wsa_build_ver.split(".")[0] and int(wsa_build_ver.split(".")[2]) < int(tmp_wsa_build_ver.split(".")[2]):
                 wsa_build_ver = tmp_wsa_build_ver
                 threads.pop()
             else:

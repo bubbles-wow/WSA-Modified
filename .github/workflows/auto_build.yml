@@ -91,5 +91,5 @@ jobs:
         if: steps.download.outputs.download != 'false'
         uses: actions/upload-artifact@v3
         with:
-            name: ${{ steps.wsa2.outputs.artifact }}.zip
-            path: ${{ github.workspace }}/output/${{ steps.wsa2.outputs.artifact }}.zip
+            name: ${{ steps.wsa2.outputs.artifact }}
+            path: ${{ github.workspace }}/output/${{ steps.wsa2.outputs.artifact }}
