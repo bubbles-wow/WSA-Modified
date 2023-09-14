@@ -793,18 +793,21 @@ if [ "$REMOVE_AMAZON" = "yes" ]; then
     artifact_name+="-RemovedAmazon"
 fi
 echo "$artifact_name"
-echo "artifact=${artifact_name}" >> "$GITHUB_OUTPUT"
 echo -e "\nFinishing building...."
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_PATH="${OUTPUT_DIR:?}/$artifact_name"
 mv "$WORK_DIR/wsa/$ARCH" "$WORK_DIR/wsa/$artifact_name"
 echo "file_ext=.${COMPRESS_FORMAT}" >> "$GITHUB_OUTPUT"
 if [ "$COMPRESS_FORMAT" = "7z" ]; then
-    echo "Compressing with 7-Zip"
+    echo "Compressing with 7-Zip..."
     OUTPUT_PATH="$OUTPUT_PATH.7z"
     7z a -mx=7 "${OUTPUT_PATH:?}" "$WORK_DIR/wsa/$artifact_name" || abort
+    echo "artifact=${artifact_name}.zip" >> "$GITHUB_OUTPUT"
 else
-    echo "Compressing with ZIP later..."
-    cp -r "$WORK_DIR/wsa/$artifact_name" "$OUTPUT_PATH" || abort
+    echo "Compressing with ZIP..."
+    zip -r -9 -q "$OUTPUT_PATH.zip" "$WORK_DIR/wsa/$artifact_name" || abort
+    echo "artifact=${artifact_name}.zip" >> "$GITHUB_OUTPUT"
 fi
+echo "Deleting work dir..."
+rm -r $WORK_DIR/wsa/$artifact_name
 echo -e "Done\n"

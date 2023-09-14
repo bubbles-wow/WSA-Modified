@@ -70,29 +70,26 @@ jobs:
 
       - name: Build WSA 🏗️
         if: steps.download.outputs.download != 'false'
-        id: wsa
+        id: wsa1
         run: |
           ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --remove-amazon --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver stable --remove-amazon --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver stable --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver delta --remove-amazon --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver delta --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand MindTheGapps --root-sol none --magisk-ver stable --remove-amazon --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand MindTheGapps --root-sol none --magisk-ver stable --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver stable --remove-amazon --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver stable --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver delta --remove-amazon --compress-format zip
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver delta --compress-format zip
 
-      - name: File Checksum ✔️
+      - name: Build WSA 🏗️
         if: steps.download.outputs.download != 'false'
-        working-directory: output
-        run: sha256sum '${{ steps.wsa.outputs.artifact }}.zip' > sha256-checksum.txt
+        id: wsa2
+        run: |
+          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --compress-format zip
 
       - name: Upload Artifact 📦
         if: steps.download.outputs.download != 'false'
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ steps.wsa.outputs.artifact }}-compressed
-          path: output
+          name: ${{ steps.wsa1.outputs.artifact }}.zip
+          path: ${{ github.workspace }}/output/${{ steps.wsa1.outputs.artifact }}.zip
+      
+      - name: Upload Artifact 📦
+        if: steps.download.outputs.download != 'false'
+        uses: actions/upload-artifact@v3
+        with:
+            name: ${{ steps.wsa2.outputs.artifact }}.zip
+            path: ${{ github.workspace }}/output/${{ steps.wsa2.outputs.artifact }}.zip

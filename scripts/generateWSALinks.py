@@ -173,6 +173,7 @@ for filename, values in identities.items():
         else:
             if version.parse(wsa_build_ver) < version.parse(tmp_wsa_build_ver):
                 wsa_build_ver = tmp_wsa_build_ver
+                threads.pop()
             else:
                 continue
         version_splited = wsa_build_ver.split(".")
