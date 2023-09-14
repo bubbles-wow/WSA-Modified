@@ -57,7 +57,7 @@ jobs:
           echo "Generate Download Links"
           cd ./scripts
           python3 generateWSALinks.py x64 WIF "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
-          python3 generateWSALinks.py arm64 WIF "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
+          python3 generateWSALinks.py arm64 WIF "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" --skip_download_wsa
           python3 generateMagiskLink.py stable "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
           python3 generateMagiskLink.py delta "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME"
           python3 generateGappsLink.py x64 "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" MindTheGapps-x64-13.0.zip
