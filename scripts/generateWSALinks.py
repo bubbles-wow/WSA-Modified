@@ -32,6 +32,7 @@ from typing import Any, OrderedDict
 from xml.dom import minidom
 
 from requests import Session
+from packaging import version
 
 
 class Prop(OrderedDict):
@@ -153,8 +154,8 @@ def send_req(i, v, out_file_name):
             download_files[out_file_name] = url
 
 
-threads = []
-wsa_build_ver = 0
+threads = {}
+wsa_build_ver = "0.0.0.0"
 for filename, values in identities.items():
     if re.match(f"Microsoft\.UI\.Xaml\..*_{arch}_.*\.appx", filename):
         out_file_name = f"{values[1]}_{arch}.appx"
@@ -167,12 +168,13 @@ for filename, values in identities.items():
         out_file = download_dir / out_file_name
     elif re.match(f"MicrosoftCorporationII\.WindowsSubsystemForAndroid_.*\.msixbundle", filename):
         tmp_wsa_build_ver = re.search(u'\d{4}.\d{5}.\d{1,}.\d{1,}', filename).group()
-        if(wsa_build_ver == 0):
+        if(wsa_build_ver == "0.0.0.0"):
             wsa_build_ver = tmp_wsa_build_ver
         else:
-            if int(wsa_build_ver.split(".")[0]) < int(tmp_wsa_build_ver.split(".")[0]) or wsa_build_ver.split(".")[0] == tmp_wsa_build_ver.split(".")[0] and int(wsa_build_ver.split(".")[2]) < int(tmp_wsa_build_ver.split(".")[2]):
+            if version.parse(wsa_build_ver) < version.parse(tmp_wsa_build_ver):
                 wsa_build_ver = tmp_wsa_build_ver
-                threads.pop()
+                if f"wsa-{release_type}.zip" in download_files:
+                    del download_files[f"wsa-{release_type}.zip"]
             else:
                 continue
         version_splited = wsa_build_ver.split(".")
@@ -188,11 +190,11 @@ for filename, values in identities.items():
     else:
         continue
     th = Thread(target=send_req, args=(values[0][0], values[0][1], out_file_name))
-    threads.append(th)
+    threads[out_file_name] = th
     th.daemon = True
     th.start()
-for th in threads:
-    th.join()
+for file_name in threads:
+    threads[file_name].join()
 print(f'WSA Build Version={wsa_build_ver}\n', flush=True)
 for key, value in download_files.items():
     print(f"download link: {value}\npath: {download_dir / key}\n", flush=True)
