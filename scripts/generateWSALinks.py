@@ -173,8 +173,8 @@ for filename, values in identities.items():
         else:
             if version.parse(wsa_build_ver) < version.parse(tmp_wsa_build_ver):
                 wsa_build_ver = tmp_wsa_build_ver
-                if f"wsa-{release_type}.zip" in download_files:
-                    del download_files[f"wsa-{release_type}.zip"]
+                if f"wsa-{release_type}.zip" in threads:
+                    del threads[f"wsa-{release_type}.zip"]
             else:
                 continue
         version_splited = wsa_build_ver.split(".")
@@ -196,9 +196,9 @@ for filename, values in identities.items():
 for file_name in threads:
     threads[file_name].join()
 print(f'WSA Build Version={wsa_build_ver}\n', flush=True)
-# output wsa version to github action
-os.popen(f"echo \"WSAVER={wsa_build_ver} >> \"$GITHUB_OUTPUT\"", 'w')
 for key, value in download_files.items():
+    if os.path.exists(download_dir / key):
+        continue
     print(f"download link: {value}\npath: {download_dir / key}\n", flush=True)
     tmpdownlist.writelines(value + '\n')
     tmpdownlist.writelines(f'  dir={download_dir}\n')

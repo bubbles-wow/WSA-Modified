@@ -810,4 +810,5 @@ else
 fi
 echo "Deleting work dir..."
 rm -r "$WORK_DIR/wsa/$artifact_name"
+echo "WSAVER=$WSA_VER" >> "$GITHUB_OUTPUT"
 echo -e "Done\n"
