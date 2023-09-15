@@ -63,12 +63,27 @@ jobs:
           python3 generateGappsLink.py x64 "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" MindTheGapps-x64-13.0.zip
           python3 generateGappsLink.py arm64 "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" MindTheGapps-arm64-13.0.zip
           echo "Download Artifacts"
-          if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity=true --continue=true --allow-overwrite=true --conditional-get=true -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME"; then
-            echo "We have encountered an error while downloading files."
-            echo "download=false" >> $GITHUB_OUTPUT
+          # skip download
+          # if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity=true --continue=true --allow-overwrite=true --conditional-get=true -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME"; then
+          #  echo "We have encountered an error while downloading files."
+          #  echo "download=false" >> $GITHUB_OUTPUT
+          # fi
+
+      - name: Check if release exists
+        id: check_release
+        run: |
+          existing_release=$(curl -s -H "Authorization: Bearer ${{ secrets.PAT }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.download.outputs.WSAVER }}")
+          if [ -z "$existing_release" ]; then
+            echo "Release does not exist"
+            echo "release_exists=false" >> $GITHUB_OUTPUT
+          else
+            echo "Release already exists"
+            echo "release_exists=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Create release 🤌
+        if: steps.check_release.outputs.release_exists == 'false'
         uses: softprops/action-gh-release@v0.1.15
         with:
           fail_on_unmatched_files: true
@@ -86,8 +101,8 @@ jobs:
         id: build
         run: |
           cd ${{ github.workspace }}
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --remove-amazon --compress-format zip
-          
+          ./scripts/build.sh --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --remove-amazon --compress-format zip
+
       - name: File Checksum ✔️
         id: hash
         run: |
@@ -131,7 +146,7 @@ jobs:
         id: build
         run: |
           cd ${{ github.workspace }}
-          ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --compress-format zip
+          ./scripts/build.sh --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --compress-format zip
       
       - name: File Checksum ✔️
         id: hash-2
