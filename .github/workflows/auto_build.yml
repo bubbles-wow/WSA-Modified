@@ -101,7 +101,7 @@ jobs:
         id: build
         run: |
           cd ${{ github.workspace }}
-          ./scripts/build.sh --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --remove-amazon --compress-format zip
+          ${{ github.workspace }}/scripts/build.sh --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --remove-amazon --compress-format zip
 
       - name: File Checksum ✔️
         id: hash
@@ -146,7 +146,7 @@ jobs:
         id: build
         run: |
           cd ${{ github.workspace }}
-          ./scripts/build.sh --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --compress-format zip
+          ${{ github.workspace }}/scripts/build.sh --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --compress-format zip
       
       - name: File Checksum ✔️
         id: hash-2
