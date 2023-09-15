@@ -50,7 +50,8 @@ jobs:
         run: |
           existing_release=$(curl -s -H "Authorization: Bearer ${{ secrets.PAT }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/WSA_${{ steps.version.outputs.WSAVER }}")
-          if [ -z "$existing_release" ]; then
+          length=$(expr length "$existing_release")
+          if [ "$length" -lt 150 ]; then
             echo "Release does not exist"
             echo "release_exists=false" >> $GITHUB_OUTPUT
           else
