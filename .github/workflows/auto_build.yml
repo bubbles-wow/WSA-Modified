@@ -1,75 +1,10 @@
-name: Auto Build (test)
+name: Share Data Between Jobs
 
-on:
+on: 
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout ♻️
-        uses: actions/checkout@v4
-
-      - name: Setup Python 👷
-        uses: actions/setup-python@v4
-        with:
-          check-latest: true
-          python-version: '3.x'
-          cache: 'pip'
-          cache-dependency-path: scripts/
-
-      - name: Setup Python3 Virtual Enviroment 🐍
-        working-directory: scripts
-        run: |
-          sudo apt-get update
-          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
-          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
-          # shellcheck disable=SC1091
-          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
-          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
-              echo "Installing Python3 dependencies"
-              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
-          }
-          deactivate
-
-      - name: Install Ubuntu Dependencies 🧑‍🏭
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: e2fsprogs attr unzip qemu-utils python3-venv
-          version: 1.0
-
-      - name: Get latest version 📥
-        id: version
-        run: |
-          pip3 install -r ./scripts/requirements.txt
-          python3 ./scripts/getWSAVersion.py
-          
-
-      - name: Check if release exists 🤔
-        id: check_release
-        run: |
-          existing_release=$(curl -s -H "Authorization: Bearer ${{ secrets.PAT }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.version.outputs.WSAVER }}")
-          if [ -z "$existing_release" ]; then
-            echo "Release does not exist"
-            echo "release_exists=false" >> $GITHUB_OUTPUT
-          else
-            echo "Release already exists"
-            echo "release_exists=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create release 🤌
-        if: steps.check_release.outputs.release_exists == 'false'
-        uses: softprops/action-gh-release@v0.1.15
-        with:
-          fail_on_unmatched_files: true
-          append_body: true
-          tag_name: ${{ steps.version.outputs.WSAVER }}
-          body: |
-            ## Hashes
-          token: ${{ secrets.PAT }}
-
-  build-wsa-1:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout ♻️

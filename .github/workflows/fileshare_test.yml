@@ -1,0 +1,26 @@
+name: Share Data Between Jobs
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create shared directory
+        run: mkdir shared-data
+
+      - name: Generate data in job1
+        run: echo "Some data" > shared-data/data.txt
+
+  job2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Access data in job2
+        run: cat shared-data/data.txt
