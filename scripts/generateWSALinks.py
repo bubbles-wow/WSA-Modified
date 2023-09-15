@@ -196,6 +196,7 @@ for filename, values in identities.items():
 for file_name in threads:
     threads[file_name].join()
 print(f'WSA Build Version={wsa_build_ver}\n', flush=True)
+os.environ['WSA_VER'] = wsa_build_ver
 for key, value in download_files.items():
     if sys.argv[5] == "--skip_download_wsa":
         continue
