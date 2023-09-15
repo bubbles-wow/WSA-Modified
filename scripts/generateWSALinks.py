@@ -198,7 +198,7 @@ for file_name in threads:
 print(f'WSA Build Version={wsa_build_ver}\n', flush=True)
 os.environ['WSA_VER'] = wsa_build_ver
 for key, value in download_files.items():
-    if sys.argv[5] == "--skip_download_wsa":
+    if len(sys.argv) == 6 and sys.argv[5] == "--skip_download_wsa":
         continue
     print(f"download link: {value}\npath: {download_dir / key}\n", flush=True)
     tmpdownlist.writelines(value + '\n')
