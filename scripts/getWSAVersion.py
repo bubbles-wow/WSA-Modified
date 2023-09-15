@@ -88,7 +88,8 @@ def checker(user, release_type):
         ),
         reverse=False
     )
-    os.popen(f"echo \"WSAVER={info_list[-1].split("_")[1]}\" >> \"$GITHUB_OUTPUT\"")
+    wsa_latest_ver = info_list[-1].split("_")[1]
+    os.popen(f"echo \"WSAVER={wsa_latest_ver}\" >> \"$GITHUB_OUTPUT\"")
 
 user_code = ""
 try:
