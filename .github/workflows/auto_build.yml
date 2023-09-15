@@ -85,10 +85,9 @@ jobs:
       - name: Build WSA 🏗️
         id: build
         run: |
+          cd ${{ github.workspace }}
           ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --remove-amazon --compress-format zip
-          echo "md5=$(md5sum output/WSA-*.zip | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "sha256=$(sha256sum output/WSA-*.zip | awk '{print $1}')" >> $GITHUB_OUTPUT
-
+          
       - name: File Checksum ✔️
         id: hash
         run: |
@@ -131,6 +130,7 @@ jobs:
       - name: Build WSA 🏗️
         id: build
         run: |
+          cd ${{ github.workspace }}
           ./scripts/build.sh --offline --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol none --magisk-ver stable --compress-format zip
       
       - name: File Checksum ✔️
