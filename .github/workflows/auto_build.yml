@@ -1,10 +1,10 @@
-name: Auto Build (test)
+name: Auto Build WSA
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout ♻️
@@ -49,7 +49,7 @@ jobs:
         id: check_release
         run: |
           existing_release=$(curl -s -H "Authorization: Bearer ${{ secrets.PAT }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.version.outputs.WSAVER }}")
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/WSA_${{ steps.version.outputs.WSAVER }}")
           if [ -z "$existing_release" ]; then
             echo "Release does not exist"
             echo "release_exists=false" >> $GITHUB_OUTPUT
@@ -64,7 +64,7 @@ jobs:
         with:
           fail_on_unmatched_files: true
           append_body: true
-          tag_name: ${{ steps.version.outputs.WSAVER }}
+          tag_name: WSA_${{ steps.version.outputs.WSAVER }}
           body: |
             ## Hashes
           token: ${{ secrets.PAT }}
@@ -134,7 +134,231 @@ jobs:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
           append_body: true
-          tag_name: ${{ steps.build.outputs.WSAVER }}
+          tag_name: WSA_${{ steps.build.outputs.WSAVER }}
+          body: |
+            - ${{ steps.build.outputs.artifact }}
+            ```yaml
+            MD5: ${{ steps.hash.outputs.MD5 }}
+            SHA256: ${{ steps.hash.outputs.SHA256 }}
+            ```
+          token: ${{ secrets.PAT }}
+
+  build-wsa-2:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Setup Python3 Virtual Enviroment 🐍
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          # shellcheck disable=SC1091
+          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
+          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
+              echo "Installing Python3 dependencies"
+              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
+          }
+          deactivate
+
+      - name: Install Ubuntu Dependencies 🧑‍🏭
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: e2fsprogs attr unzip qemu-utils python3-venv
+          version: 1.0
+
+      - name: Build WSA 🏗️
+        id: build
+        run: |
+          ./scripts/build.sh --custom-model redfin --arch x64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver delta --remove-amazon --compress-format zip
+
+      - name: File Checksum ✔️
+        id: hash
+        run: |
+          filedir="${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}"
+          md5_hash=$(md5sum "$filedir" | cut -d ' ' -f 1)
+          sha256_hash=$(sha256sum "$filedir" | cut -d ' ' -f 1)
+          md5_hash_lower=$(echo "$md5_hash" | tr '[:upper:]' '[:lower:]')
+          sha256_hash_lower=$(echo "$sha256_hash" | tr '[:upper:]' '[:lower:]')
+          echo "MD5=$md5_hash_lower" >> $GITHUB_OUTPUT
+          echo "SHA256=$sha256_hash_lower" >> $GITHUB_OUTPUT
+          echo "${{ steps.build.outputs.artifact }}"
+          echo "MD5=$md5_hash_lower"
+          echo "SHA256=$sha256_hash_lower"
+
+      - name: Upload Artifact 📦
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.build.outputs.artifact }}
+          path: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
+
+      - name: Update build to release 🤌
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ steps.build.outputs.WSAVER }}
+          body: |
+            - ${{ steps.build.outputs.artifact }}
+            ```yaml
+            MD5: ${{ steps.hash.outputs.MD5 }}
+            SHA256: ${{ steps.hash.outputs.SHA256 }}
+            ```
+          token: ${{ secrets.PAT }}
+
+  build-wsa-3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Setup Python3 Virtual Enviroment 🐍
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          # shellcheck disable=SC1091
+          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
+          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
+              echo "Installing Python3 dependencies"
+              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
+          }
+          deactivate
+
+      - name: Install Ubuntu Dependencies 🧑‍🏭
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: e2fsprogs attr unzip qemu-utils python3-venv
+          version: 1.0
+
+      - name: Build WSA 🏗️
+        id: build
+        run: |
+          ./scripts/build.sh --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver stable --remove-amazon --compress-format zip
+
+      - name: File Checksum ✔️
+        id: hash
+        run: |
+          filedir="${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}"
+          md5_hash=$(md5sum "$filedir" | cut -d ' ' -f 1)
+          sha256_hash=$(sha256sum "$filedir" | cut -d ' ' -f 1)
+          md5_hash_lower=$(echo "$md5_hash" | tr '[:upper:]' '[:lower:]')
+          sha256_hash_lower=$(echo "$sha256_hash" | tr '[:upper:]' '[:lower:]')
+          echo "MD5=$md5_hash_lower" >> $GITHUB_OUTPUT
+          echo "SHA256=$sha256_hash_lower" >> $GITHUB_OUTPUT
+          echo "${{ steps.build.outputs.artifact }}"
+          echo "MD5=$md5_hash_lower"
+          echo "SHA256=$sha256_hash_lower"
+
+      - name: Upload Artifact 📦
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.build.outputs.artifact }}
+          path: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
+
+      - name: Update build to release 🤌
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ steps.build.outputs.WSAVER }}
+          body: |
+            - ${{ steps.build.outputs.artifact }}
+            ```yaml
+            MD5: ${{ steps.hash.outputs.MD5 }}
+            SHA256: ${{ steps.hash.outputs.SHA256 }}
+            ```
+          token: ${{ secrets.PAT }}
+
+  build-wsa-4:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Setup Python3 Virtual Enviroment 🐍
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          # shellcheck disable=SC1091
+          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
+          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
+              echo "Installing Python3 dependencies"
+              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
+          }
+          deactivate
+
+      - name: Install Ubuntu Dependencies 🧑‍🏭
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: e2fsprogs attr unzip qemu-utils python3-venv
+          version: 1.0
+
+      - name: Build WSA 🏗️
+        id: build
+        run: |
+          ./scripts/build.sh --custom-model redfin --arch x64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver delta --remove-amazon --compress-format zip
+
+      - name: File Checksum ✔️
+        id: hash
+        run: |
+          filedir="${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}"
+          md5_hash=$(md5sum "$filedir" | cut -d ' ' -f 1)
+          sha256_hash=$(sha256sum "$filedir" | cut -d ' ' -f 1)
+          md5_hash_lower=$(echo "$md5_hash" | tr '[:upper:]' '[:lower:]')
+          sha256_hash_lower=$(echo "$sha256_hash" | tr '[:upper:]' '[:lower:]')
+          echo "MD5=$md5_hash_lower" >> $GITHUB_OUTPUT
+          echo "SHA256=$sha256_hash_lower" >> $GITHUB_OUTPUT
+          echo "${{ steps.build.outputs.artifact }}"
+          echo "MD5=$md5_hash_lower"
+          echo "SHA256=$sha256_hash_lower"
+
+      - name: Upload Artifact 📦
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.build.outputs.artifact }}
+          path: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
+
+      - name: Update build to release 🤌
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ steps.build.outputs.WSAVER }}
           body: |
             - ${{ steps.build.outputs.artifact }}
             ```yaml
