@@ -175,7 +175,7 @@ for filename, values in identities.items():
             wsa_build_ver = tmp_wsa_build_ver
         else:
             if version.parse(wsa_build_ver) < version.parse(tmp_wsa_build_ver):
-                latest_wsa_name = tmp_wsa_filename
+                latest_wsa_name = tmp_wsa_name
                 wsa_build_ver = tmp_wsa_build_ver
             else:
                 continue
