@@ -64,7 +64,7 @@ jobs:
         with:
           fail_on_unmatched_files: true
           append_body: true
-          tag_name: WSA_${{ steps.version.outputs.WSAVER }}_arm64
+          tag_name: WSA_${{ steps.version.outputs.WSAVER }}_ARM64
           body: |
             ## Hashes
           token: ${{ secrets.PAT }}
