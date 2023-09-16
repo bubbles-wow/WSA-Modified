@@ -64,7 +64,7 @@ jobs:
         with:
           fail_on_unmatched_files: true
           append_body: true
-          tag_name: WSA_${{ steps.version.outputs.WSAVER }}_ARM64
+          tag_name: WSA_${{ steps.version.outputs.WSAVER }}_arm64
           body: |
             ## Hashes
           token: ${{ secrets.PAT }}
@@ -135,13 +135,13 @@ jobs:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
           append_body: true
-          tag_name: WSA_${{ steps.build.outputs.WSAVER }}_ARM64
+          tag_name: WSA_${{ steps.build.outputs.WSAVER }}_arm64
           body: |
             - ${{ steps.build.outputs.artifact }}
-            ```yaml
-            MD5: ${{ steps.hash.outputs.MD5 }}
-            SHA256: ${{ steps.hash.outputs.SHA256 }}
-            ```
+              ```yaml
+              MD5: ${{ steps.hash.outputs.MD5 }}
+              SHA256: ${{ steps.hash.outputs.SHA256 }}
+              ```
           token: ${{ secrets.PAT }}
 
   build-wsa-2:
@@ -210,13 +210,13 @@ jobs:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
           append_body: true
-          tag_name: WSA_${{ steps.build.outputs.WSAVER }}_ARM64
+          tag_name: WSA_${{ steps.build.outputs.WSAVER }}_arm64
           body: |
             - ${{ steps.build.outputs.artifact }}
-            ```yaml
-            MD5: ${{ steps.hash.outputs.MD5 }}
-            SHA256: ${{ steps.hash.outputs.SHA256 }}
-            ```
+              ```yaml
+              MD5: ${{ steps.hash.outputs.MD5 }}
+              SHA256: ${{ steps.hash.outputs.SHA256 }}
+              ```
           token: ${{ secrets.PAT }}
 
   build-wsa-3:
@@ -285,13 +285,13 @@ jobs:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
           append_body: true
-          tag_name: WSA_${{ steps.build.outputs.WSAVER }}_ARM64
+          tag_name: WSA_${{ steps.build.outputs.WSAVER }}_arm64
           body: |
             - ${{ steps.build.outputs.artifact }}
-            ```yaml
-            MD5: ${{ steps.hash.outputs.MD5 }}
-            SHA256: ${{ steps.hash.outputs.SHA256 }}
-            ```
+              ```yaml
+              MD5: ${{ steps.hash.outputs.MD5 }}
+              SHA256: ${{ steps.hash.outputs.SHA256 }}
+              ```
           token: ${{ secrets.PAT }}
 
   build-wsa-4:
@@ -360,11 +360,11 @@ jobs:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
           append_body: true
-          tag_name: WSA_${{ steps.build.outputs.WSAVER }}_ARM64
+          tag_name: WSA_${{ steps.build.outputs.WSAVER }}_arm64
           body: |
             - ${{ steps.build.outputs.artifact }}
-            ```yaml
-            MD5: ${{ steps.hash.outputs.MD5 }}
-            SHA256: ${{ steps.hash.outputs.SHA256 }}
-            ```
+              ```yaml
+              MD5: ${{ steps.hash.outputs.MD5 }}
+              SHA256: ${{ steps.hash.outputs.SHA256 }}
+              ```
           token: ${{ secrets.PAT }}

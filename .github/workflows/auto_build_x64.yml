@@ -1,4 +1,4 @@
-name: Auto Build WSA x64
+name: Auto Build WSA X64
 
 on:
   workflow_dispatch:
@@ -138,10 +138,10 @@ jobs:
           tag_name: WSA_${{ steps.build.outputs.WSAVER }}_x64
           body: |
             - ${{ steps.build.outputs.artifact }}
-            ```yaml
-            MD5: ${{ steps.hash.outputs.MD5 }}
-            SHA256: ${{ steps.hash.outputs.SHA256 }}
-            ```
+              ```yaml
+              MD5: ${{ steps.hash.outputs.MD5 }}
+              SHA256: ${{ steps.hash.outputs.SHA256 }}
+              ```
           token: ${{ secrets.PAT }}
 
   build-wsa-2:
@@ -213,10 +213,10 @@ jobs:
           tag_name: WSA_${{ steps.build.outputs.WSAVER }}_x64
           body: |
             - ${{ steps.build.outputs.artifact }}
-            ```yaml
-            MD5: ${{ steps.hash.outputs.MD5 }}
-            SHA256: ${{ steps.hash.outputs.SHA256 }}
-            ```
+              ```yaml
+              MD5: ${{ steps.hash.outputs.MD5 }}
+              SHA256: ${{ steps.hash.outputs.SHA256 }}
+              ```
           token: ${{ secrets.PAT }}
 
   build-wsa-3:
@@ -288,10 +288,10 @@ jobs:
           tag_name: WSA_${{ steps.build.outputs.WSAVER }}_x64
           body: |
             - ${{ steps.build.outputs.artifact }}
-            ```yaml
-            MD5: ${{ steps.hash.outputs.MD5 }}
-            SHA256: ${{ steps.hash.outputs.SHA256 }}
-            ```
+              ```yaml
+              MD5: ${{ steps.hash.outputs.MD5 }}
+              SHA256: ${{ steps.hash.outputs.SHA256 }}
+              ```
           token: ${{ secrets.PAT }}
 
   build-wsa-4:
@@ -363,8 +363,8 @@ jobs:
           tag_name: WSA_${{ steps.build.outputs.WSAVER }}_x64
           body: |
             - ${{ steps.build.outputs.artifact }}
-            ```yaml
-            MD5: ${{ steps.hash.outputs.MD5 }}
-            SHA256: ${{ steps.hash.outputs.SHA256 }}
-            ```
+              ```yaml
+              MD5: ${{ steps.hash.outputs.MD5 }}
+              SHA256: ${{ steps.hash.outputs.SHA256 }}
+              ```
           token: ${{ secrets.PAT }}
