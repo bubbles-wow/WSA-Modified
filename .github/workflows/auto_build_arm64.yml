@@ -112,16 +112,13 @@ jobs:
       - name: Check If Need Upload 🤔
         id: check
         run: |
-          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
-          assets=$(echo "$release_info" | jq -r '.assets[].name')
-          file_to_check="${{ steps.build.outputs.artifact }}"
-          if [[ $assets =~ "$file_to_check" ]]; then
-            echo "File '$file_to_check' exists in the latest release assets."
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${{ steps.build.outputs.WSAVER }}_arm64/${{ steps.build.outputs.artifact }}"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading ${{ steps.build.outputs.artifact }} because it already exists in the release assets."
             echo "need_upload=false" >> $GITHUB_OUTPUT
           else
-            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "Wait uploading ${{ steps.build.outputs.artifact }} because it does not exist in the release assets."
             echo "need_upload=true" >> $GITHUB_OUTPUT
           fi
 
@@ -206,16 +203,13 @@ jobs:
       - name: Check If Need Upload 🤔
         id: check
         run: |
-          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
-          assets=$(echo "$release_info" | jq -r '.assets[].name')
-          file_to_check="${{ steps.build.outputs.artifact }}"
-          if [[ $assets =~ "$file_to_check" ]]; then
-            echo "File '$file_to_check' exists in the latest release assets."
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${{ steps.build.outputs.WSAVER }}_arm64/${{ steps.build.outputs.artifact }}"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading ${{ steps.build.outputs.artifact }} because it already exists in the release assets."
             echo "need_upload=false" >> $GITHUB_OUTPUT
           else
-            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "Wait uploading ${{ steps.build.outputs.artifact }} because it does not exist in the release assets."
             echo "need_upload=true" >> $GITHUB_OUTPUT
           fi
 
@@ -300,16 +294,13 @@ jobs:
       - name: Check If Need Upload 🤔
         id: check
         run: |
-          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
-          assets=$(echo "$release_info" | jq -r '.assets[].name')
-          file_to_check="${{ steps.build.outputs.artifact }}"
-          if [[ $assets =~ "$file_to_check" ]]; then
-            echo "File '$file_to_check' exists in the latest release assets."
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${{ steps.build.outputs.WSAVER }}_arm64/${{ steps.build.outputs.artifact }}"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading ${{ steps.build.outputs.artifact }} because it already exists in the release assets."
             echo "need_upload=false" >> $GITHUB_OUTPUT
           else
-            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "Wait uploading ${{ steps.build.outputs.artifact }} because it does not exist in the release assets."
             echo "need_upload=true" >> $GITHUB_OUTPUT
           fi
 
@@ -394,16 +385,13 @@ jobs:
       - name: Check If Need Upload 🤔
         id: check
         run: |
-          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
-          assets=$(echo "$release_info" | jq -r '.assets[].name')
-          file_to_check="${{ steps.build.outputs.artifact }}"
-          if [[ $assets =~ "$file_to_check" ]]; then
-            echo "File '$file_to_check' exists in the latest release assets."
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${{ steps.build.outputs.WSAVER }}_arm64/${{ steps.build.outputs.artifact }}"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading ${{ steps.build.outputs.artifact }} because it already exists in the release assets."
             echo "need_upload=false" >> $GITHUB_OUTPUT
           else
-            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "Wait uploading ${{ steps.build.outputs.artifact }} because it does not exist in the release assets."
             echo "need_upload=true" >> $GITHUB_OUTPUT
           fi
 
@@ -488,16 +476,13 @@ jobs:
       - name: Check If Need Upload 🤔
         id: check
         run: |
-          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
-          assets=$(echo "$release_info" | jq -r '.assets[].name')
-          file_to_check="${{ steps.build.outputs.artifact }}"
-          if [[ $assets =~ "$file_to_check" ]]; then
-            echo "File '$file_to_check' exists in the latest release assets."
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${{ steps.build.outputs.WSAVER }}_arm64/${{ steps.build.outputs.artifact }}"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading ${{ steps.build.outputs.artifact }} because it already exists in the release assets."
             echo "need_upload=false" >> $GITHUB_OUTPUT
           else
-            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "Wait uploading ${{ steps.build.outputs.artifact }} because it does not exist in the release assets."
             echo "need_upload=true" >> $GITHUB_OUTPUT
           fi
 
@@ -582,16 +567,13 @@ jobs:
       - name: Check If Need Upload 🤔
         id: check
         run: |
-          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
-          assets=$(echo "$release_info" | jq -r '.assets[].name')
-          file_to_check="${{ steps.build.outputs.artifact }}"
-          if [[ $assets =~ "$file_to_check" ]]; then
-            echo "File '$file_to_check' exists in the latest release assets."
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${{ steps.build.outputs.WSAVER }}_arm64/${{ steps.build.outputs.artifact }}"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading ${{ steps.build.outputs.artifact }} because it already exists in the release assets."
             echo "need_upload=false" >> $GITHUB_OUTPUT
           else
-            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "Wait uploading ${{ steps.build.outputs.artifact }} because it does not exist in the release assets."
             echo "need_upload=true" >> $GITHUB_OUTPUT
           fi
 
