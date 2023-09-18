@@ -109,7 +109,24 @@ jobs:
         run: |
           ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver stable --remove-amazon --compress-format zip
 
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
+          assets=$(echo "$release_info" | jq -r '.assets[].name')
+          file_to_check="${{ steps.build.outputs.artifact }}"
+          if [[ $assets =~ "$file_to_check" ]]; then
+            echo "File '$file_to_check' exists in the latest release assets."
+            echo "need_upload=false" >> $GITHUB_OUTPUT
+          else
+            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "need_upload=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: File Checksum ✔️
+        if: steps.check.outputs.need_upload == 'true'
         id: hash
         run: |
           filedir="${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}"
@@ -125,12 +142,14 @@ jobs:
 
       - name: Upload Artifact 📦
         uses: actions/upload-artifact@v3
+        if: steps.check.outputs.need_upload == 'true'
         with:
           name: ${{ steps.build.outputs.artifact }}
           path: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
 
       - name: Update build to release 🤌
         uses: softprops/action-gh-release@v0.1.15
+        if: steps.check.outputs.need_upload == 'true'
         with:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
@@ -184,7 +203,24 @@ jobs:
         run: |
           ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver delta --remove-amazon --compress-format zip
 
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
+          assets=$(echo "$release_info" | jq -r '.assets[].name')
+          file_to_check="${{ steps.build.outputs.artifact }}"
+          if [[ $assets =~ "$file_to_check" ]]; then
+            echo "File '$file_to_check' exists in the latest release assets."
+            echo "need_upload=false" >> $GITHUB_OUTPUT
+          else
+            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "need_upload=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: File Checksum ✔️
+        if: steps.check.outputs.need_upload == 'true'
         id: hash
         run: |
           filedir="${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}"
@@ -200,12 +236,14 @@ jobs:
 
       - name: Upload Artifact 📦
         uses: actions/upload-artifact@v3
+        if: steps.check.outputs.need_upload == 'true'
         with:
           name: ${{ steps.build.outputs.artifact }}
           path: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
 
       - name: Update build to release 🤌
         uses: softprops/action-gh-release@v0.1.15
+        if: steps.check.outputs.need_upload == 'true'
         with:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
@@ -259,7 +297,24 @@ jobs:
         run: |
           ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver stable --remove-amazon --compress-format zip
 
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
+          assets=$(echo "$release_info" | jq -r '.assets[].name')
+          file_to_check="${{ steps.build.outputs.artifact }}"
+          if [[ $assets =~ "$file_to_check" ]]; then
+            echo "File '$file_to_check' exists in the latest release assets."
+            echo "need_upload=false" >> $GITHUB_OUTPUT
+          else
+            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "need_upload=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: File Checksum ✔️
+        if: steps.check.outputs.need_upload == 'true'
         id: hash
         run: |
           filedir="${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}"
@@ -275,12 +330,14 @@ jobs:
 
       - name: Upload Artifact 📦
         uses: actions/upload-artifact@v3
+        if: steps.check.outputs.need_upload == 'true'
         with:
           name: ${{ steps.build.outputs.artifact }}
           path: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
 
       - name: Update build to release 🤌
         uses: softprops/action-gh-release@v0.1.15
+        if: steps.check.outputs.need_upload == 'true'
         with:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
@@ -334,7 +391,24 @@ jobs:
         run: |
           ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver delta --remove-amazon --compress-format zip
 
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
+          assets=$(echo "$release_info" | jq -r '.assets[].name')
+          file_to_check="${{ steps.build.outputs.artifact }}"
+          if [[ $assets =~ "$file_to_check" ]]; then
+            echo "File '$file_to_check' exists in the latest release assets."
+            echo "need_upload=false" >> $GITHUB_OUTPUT
+          else
+            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "need_upload=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: File Checksum ✔️
+        if: steps.check.outputs.need_upload == 'true'
         id: hash
         run: |
           filedir="${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}"
@@ -350,12 +424,14 @@ jobs:
 
       - name: Upload Artifact 📦
         uses: actions/upload-artifact@v3
+        if: steps.check.outputs.need_upload == 'true'
         with:
           name: ${{ steps.build.outputs.artifact }}
           path: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
 
       - name: Update build to release 🤌
         uses: softprops/action-gh-release@v0.1.15
+        if: steps.check.outputs.need_upload == 'true'
         with:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
@@ -409,7 +485,24 @@ jobs:
         run: |
           ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand MindTheGapps --root-sol kernelsu --magisk-ver stable --remove-amazon --compress-format zip
 
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
+          assets=$(echo "$release_info" | jq -r '.assets[].name')
+          file_to_check="${{ steps.build.outputs.artifact }}"
+          if [[ $assets =~ "$file_to_check" ]]; then
+            echo "File '$file_to_check' exists in the latest release assets."
+            echo "need_upload=false" >> $GITHUB_OUTPUT
+          else
+            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "need_upload=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: File Checksum ✔️
+        if: steps.check.outputs.need_upload == 'true'
         id: hash
         run: |
           filedir="${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}"
@@ -425,12 +518,14 @@ jobs:
 
       - name: Upload Artifact 📦
         uses: actions/upload-artifact@v3
+        if: steps.check.outputs.need_upload == 'true'
         with:
           name: ${{ steps.build.outputs.artifact }}
           path: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
 
       - name: Update build to release 🤌
         uses: softprops/action-gh-release@v0.1.15
+        if: steps.check.outputs.need_upload == 'true'
         with:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
@@ -484,7 +579,24 @@ jobs:
         run: |
           ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand none --root-sol kernelsu --magisk-ver delta --remove-amazon --compress-format zip
 
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          release_info=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/WSA_${{ steps.build.outputs.WSAVER }}_arm64")
+          assets=$(echo "$release_info" | jq -r '.assets[].name')
+          file_to_check="${{ steps.build.outputs.artifact }}"
+          if [[ $assets =~ "$file_to_check" ]]; then
+            echo "File '$file_to_check' exists in the latest release assets."
+            echo "need_upload=false" >> $GITHUB_OUTPUT
+          else
+            echo "File '$file_to_check' does not exist in the latest release assets."
+            echo "need_upload=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: File Checksum ✔️
+        if: steps.check.outputs.need_upload == 'true'
         id: hash
         run: |
           filedir="${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}"
@@ -500,12 +612,14 @@ jobs:
 
       - name: Upload Artifact 📦
         uses: actions/upload-artifact@v3
+        if: steps.check.outputs.need_upload == 'true'
         with:
           name: ${{ steps.build.outputs.artifact }}
           path: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
 
       - name: Update build to release 🤌
         uses: softprops/action-gh-release@v0.1.15
+        if: steps.check.outputs.need_upload == 'true'
         with:
           files: ${{ github.workspace }}/output/${{ steps.build.outputs.artifact }}
           fail_on_unmatched_files: true
