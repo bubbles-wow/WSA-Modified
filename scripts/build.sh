@@ -800,10 +800,11 @@ if [ "$COMPRESS_FORMAT" = "7z" ]; then
     echo "artifact=${artifact_name}.7z" >> "$GITHUB_OUTPUT"
 else
     echo "Compressing with zip"
+    OUTPUT_PATH="$OUTPUT_PATH.zip"
     7z -tzip a "$OUTPUT_PATH" "$WORK_DIR/wsa/$artifact_name" || abort
     echo "artifact=${artifact_name}.zip" >> "$GITHUB_OUTPUT"
 fi
 echo "Deleting work dir..."
-rm -r "$WORK_DIR/wsa/$artifact_name"
+rm -r "$WORK_DIR"
 echo "WSAVER=$WSA_VER" >> "$GITHUB_OUTPUT"
 echo -e "Done\n"
