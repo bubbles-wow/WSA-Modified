@@ -23,8 +23,6 @@ import logging
 import os
 import re
 import sys
-import requests
-import base64
 
 from pathlib import Path
 from threading import Thread
@@ -71,17 +69,6 @@ if ms_account_conf.is_file():
     with open(ms_account_conf, "r") as f:
         conf = Prop(f.read())
         user = conf.get('user_code')
-try:
-    response = requests.get("https://api.github.com/repos/bubbles-wow/MS-Account-Token/contents/token.cfg")
-    while response.status_code != 200:
-        response = requests.get("https://api.github.com/repos/bubbles-wow/MS-Account-Token/contents/token.cfg")
-    content = response.json()["content"]
-    content = content.encode("utf-8")
-    content = base64.b64decode(content)
-    text = content.decode("utf-8")
-    user = Prop(text).get("user_code")
-except:
-    exit("Failed to get user code from github")
 print(f"Generating WSA download link: arch={arch} release_type={release_name}\n", flush=True)
 with open(Path.cwd().parent / ("xml/GetCookie.xml"), "r") as f:
     cookie_content = f.read().format(user)
@@ -155,8 +142,8 @@ def send_req(i, v, out_file_name):
 
 
 threads = []
-wsa_build_ver = "0.0.0.0"
-latest_wsa_name = ""
+wsa_build_ver = 0
+latest_wsa_filename = ""
 for filename, values in identities.items():
     if re.match(f"Microsoft\.UI\.Xaml\..*_{arch}_.*\.appx", filename):
         out_file_name = f"{values[1]}_{arch}.appx"
@@ -168,14 +155,14 @@ for filename, values in identities.items():
         out_file_name = f"{values[1]}_{arch}.appx"
         out_file = download_dir / out_file_name
     elif re.match(f"MicrosoftCorporationII\.WindowsSubsystemForAndroid_.*\.msixbundle", filename):
-        tmp_wsa_name = filename
+        tmp_wsa_filename = filename
         tmp_wsa_build_ver = re.search(u'\d{4}.\d{5}.\d{1,}.\d{1,}', filename).group()
-        if(wsa_build_ver == "0.0.0.0"):
-            latest_wsa_name = tmp_wsa_name
+        if(wsa_build_ver == 0):
+            latest_wsa_filename = tmp_wsa_filename
             wsa_build_ver = tmp_wsa_build_ver
         else:
             if version.parse(wsa_build_ver) < version.parse(tmp_wsa_build_ver):
-                latest_wsa_name = tmp_wsa_name
+                latest_wsa_filename = tmp_wsa_filename
                 wsa_build_ver = tmp_wsa_build_ver
             else:
                 continue
@@ -196,14 +183,13 @@ for filename, values in identities.items():
     threads.append(th)
     th.daemon = True
     th.start()
-th = Thread(target=send_req, args=(identities[latest_wsa_name][0][0], identities[latest_wsa_name][0][1], f"wsa-{release_type}.zip"))
+th = Thread(target=send_req, args=(identities[latest_wsa_filename][0][0], identities[latest_wsa_filename][0][1], f"wsa-{release_type}.zip"))
 threads.append(th)
 th.daemon = True
 th.start()
 for th in threads:
     th.join()
 print(f'WSA Build Version={wsa_build_ver}\n', flush=True)
-os.popen(f"echo \"WSAVER={wsa_build_ver}\" >> \"$GITHUB_OUTPUT\"")
 for key, value in download_files.items():
     print(f"download link: {value}\npath: {download_dir / key}\n", flush=True)
     tmpdownlist.writelines(value + '\n')
