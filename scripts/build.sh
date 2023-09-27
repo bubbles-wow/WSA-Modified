@@ -191,7 +191,6 @@ CUSTOM_MODEL_MAP=(
     "cheetah"
     "lynx"
     "tangorpro"
-    "felix"
 )
 
 ROOT_SOL_MAP=(
@@ -312,7 +311,7 @@ else
     printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     printf "  out=wsa-latest.zip\n" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     mkdir -p "$DOWNLOAD_DIR/xaml"
-    curl -sO "https://globalcdn.nuget.org/packages/microsoft.ui.xaml.2.8.5.nupkg" --output-dir "$DOWNLOAD_DIR/xaml"
+    curl -sO "https://globalcdn.nuget.org/packages/microsoft.ui.xaml.2.8.4.nupkg" --output-dir "$DOWNLOAD_DIR/xaml"
     7z x $DOWNLOAD_DIR/xaml/*.nupkg -o../download/ | tail -4
     mv "$DOWNLOAD_DIR/tools/AppX/$ARCH/Release/Microsoft.UI.Xaml.2.8.appx" "$xaml_PATH"
     printf "https://aka.ms/Microsoft.VCLibs.%s.14.00.Desktop.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
@@ -508,7 +507,7 @@ if [ "$REMOVE_AMAZON" ]; then
 fi
 
 echo "Add device administration features"
-sudo sed -ie '/cts/a \    <feature name="android.software.device_admin" />' -e '/print/i \    <feature name="android.software.managed_users" />' "$VENDOR_MNT/etc/permissions/windows.permissions.xml"
+sudo sed -i -e '/cts/a \ \ \ \ <feature name="android.software.device_admin" />' "$VENDOR_MNT/etc/permissions/windows.permissions.xml"
 sudo setfattr -n security.selinux -v "u:object_r:vendor_configs_file:s0" "$VENDOR_MNT/etc/permissions/windows.permissions.xml" || abort
 echo -e "done\n"
 
@@ -673,7 +672,7 @@ fi
 if [[ "$CUSTOM_MODEL" != "none" ]]; then
     echo "Fix system props"
     # The first argument is prop path, second is product name (redfin), third is device model (Pixel 5)
-    declare -A MODEL_NAME_MAP=(["sunfish"]="Pixel 4a" ["bramble"]="Pixel 4a (5G)" ["redfin"]="Pixel 5" ["barbet"]="Pixel 5a" ["raven"]="Pixel 6 Pro" ["oriole"]="Pixel 6" ["bluejay"]="Pixel 6a" ["panther"]="Pixel 7" ["cheetah"]="Pixel 7 Pro" ["lynx"]="Pixel 7a" ["tangorpro"]="Pixel Tablet" ["felix"]="Pixel Fold")
+    declare -A MODEL_NAME_MAP=(["sunfish"]="Pixel 4a" ["bramble"]="Pixel 4a (5G)" ["redfin"]="Pixel 5" ["barbet"]="Pixel 5a" ["raven"]="Pixel 6 Pro" ["oriole"]="Pixel 6" ["bluejay"]="Pixel 6a" ["panther"]="Pixel 7" ["cheetah"]="Pixel 7 Pro" ["lynx"]="Pixel 7a" ["tangorpro"]="Pixel Tablet")
     MODEL_NAME="${MODEL_NAME_MAP[$CUSTOM_MODEL]}"
     sudo python3 fixGappsProp.py "$ROOT_MNT" "$CUSTOM_MODEL" "$MODEL_NAME" || abort
     # shellcheck disable=SC2002
@@ -798,8 +797,14 @@ if [ "$COMPRESS_FORMAT" = "7z" ]; then
     echo "Compressing with 7-Zip"
     OUTPUT_PATH="$OUTPUT_PATH.7z"
     7z a -mx=7 "${OUTPUT_PATH:?}" "$WORK_DIR/wsa/$artifact_name" || abort
+    echo "artifact=${artifact_name}.7z" >> "$GITHUB_OUTPUT"
 else
-    echo "Compressing with ZIP later..."
-    cp -r "$WORK_DIR/wsa/$artifact_name" "$OUTPUT_PATH" || abort
+    echo "Compressing with zip"
+    OUTPUT_PATH="$OUTPUT_PATH.zip"
+    7z -tzip a "$OUTPUT_PATH" "$WORK_DIR/wsa/$artifact_name" || abort
+    echo "artifact=${artifact_name}.zip" >> "$GITHUB_OUTPUT"
 fi
+echo "Deleting work dir..."
+rm -r "$WORK_DIR"
+echo "WSAVER=$WSA_VER" >> "$GITHUB_OUTPUT"
 echo -e "Done\n"
