@@ -798,11 +798,14 @@ if [ "$COMPRESS_FORMAT" = "7z" ]; then
     OUTPUT_PATH="$OUTPUT_PATH.7z"
     7z a -mx=7 "${OUTPUT_PATH:?}" "$WORK_DIR/wsa/$artifact_name" || abort
     echo "artifact=${artifact_name}.7z" >> "$GITHUB_OUTPUT"
-else
+elif [ "$COMPRESS_FORMAT" = "zip" ]; then
     echo "Compressing with zip"
     OUTPUT_PATH="$OUTPUT_PATH.zip"
     7z -tzip a "$OUTPUT_PATH" "$WORK_DIR/wsa/$artifact_name" || abort
     echo "artifact=${artifact_name}.zip" >> "$GITHUB_OUTPUT"
+else
+    echo "Skip compressing files"
+    mv "$WORK_DIR/wsa/$artifact_name" "$OUTPUT_DIR"
 fi
 echo "Deleting work dir..."
 rm -r "$WORK_DIR"

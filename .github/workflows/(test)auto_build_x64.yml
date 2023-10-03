@@ -1,0 +1,200 @@
+name: (test)Auto Build WSA X64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Setup Python3 Virtual Enviroment 🐍
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          # shellcheck disable=SC1091
+          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
+          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
+              echo "Installing Python3 dependencies"
+              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
+          }
+          deactivate
+
+      - name: Install Ubuntu Dependencies 🧑‍🏭
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: e2fsprogs attr unzip qemu-utils python3-venv
+          version: 1.0
+
+      - name: Get latest version 📥
+        id: version
+        run: |
+          pip3 install -r ./scripts/requirements.txt
+          python3 ./scripts/getWSAVersion.py
+
+      - name: Check if release exists 🤔
+        id: check_release
+        run: |
+          response=$(curl -s -H "Authorization: Bearer ${{ secrets.PAT }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/WSA_${{ steps.version.outputs.WSAVER }}_x64")
+          if [ ${#response} -gt 200 ]; then
+            echo "Release already exists"
+            echo "release_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Release does not exist"
+            echo "release_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create release 🤌
+        if: steps.check_release.outputs.release_exists == 'false'
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ steps.version.outputs.WSAVER }}_x64
+          body: |
+            ## Hashes
+          token: ${{ secrets.PAT }}
+
+  build-wsa-1:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Setup Python3 Virtual Enviroment 🐍
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          # shellcheck disable=SC1091
+          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
+          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
+              echo "Installing Python3 dependencies"
+              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
+          }
+          deactivate
+
+      - name: Install Ubuntu Dependencies 🧑‍🏭
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: e2fsprogs attr unzip qemu-utils python3-venv
+          version: 1.0
+
+      - name: Build WSA 🏗️
+        id: build
+        run: |
+          ./scripts/build.sh --custom-model lynx --arch x64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver stable --remove-amazon --compress-format none
+
+      - name: Pass to Windows
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.build.outputs.artifact }}
+          path: output
+
+    outputs:
+      WSAVER: ${{ steps.build.outputs.WSAVER }}
+      artifact: ${{ steps.build.outputs.artifact }}
+
+  make-pri:
+    name: Merge PRI resources and compress images 💿
+    runs-on: windows-latest
+    needs: build-wsa-1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download built artifact 📥
+        uses: actions/download-artifact@v3
+        with:
+          path: output/
+          name: ${{ needs.build-wsa-1.outputs.artifact }}
+
+      - name: Remove unused artifact 🗑️
+        uses: geekyeggo/delete-artifact@v2
+        with:
+          name: ${{ needs.build-wsa-1.outputs.artifact }}
+
+      - name: Merge language and density resources 📂
+        run: (Start-Process pwsh.exe -NoNewWindow -PassThru -Args "-ExecutionPolicy Bypass -File MakePri.ps1" -WorkingDirectory "${{ github.workspace }}\output\${{ needs.build-wsa-1.outputs.artifact }}").WaitForExit()
+
+      - name: Compact Images 💿
+        run: |
+         foreach ($Partition in 'system','product','system_ext','vendor') {
+             Write-Output "Optimizing of $Partition..."
+             Write-Output "SELECT VDISK FILE=`"${{ github.workspace }}\output\${{ needs.build-wsa-1.outputs.artifact }}\$Partition.vhdx`"`
+         ATTACH VDISK READONLY`
+         COMPACT VDISK`
+         DETACH VDISK" | Set-Content -Path "$Partition.txt" -Encoding Ascii
+             Start-Process -NoNewWindow -Wait "diskpart.exe" -Args "/s $Partition.txt" -RedirectStandardOutput NUL
+         }
+
+      - name: Compress Zip and Add checksum 📦
+        if: success()
+        id: hash
+        working-directory: output
+        run: |
+          7z a -tzip -mx9 -mmt=on ${{ needs.build-wsa-1.outputs.artifact }}.zip ${{ needs.build-wsa-1.outputs.artifact }}\*
+          Remove-Item -Recurse -Force ${{ needs.build-wsa-1.outputs.artifact }}
+          $md5 = (Get-FileHash -Path $zipFileName -Algorithm MD5).Hash.ToLower()
+          $sha256 = (Get-FileHash -Path $zipFileName -Algorithm SHA256).Hash.ToLower()
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "MD5=$md5"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "SHA256=$sha256"
+
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          $url = "https://github.com/${{ github.repository }}/releases/download/WSA_${{ needs.build-wsa-1.outputs.WSAVER }}_x64/${{ needs.build-wsa-1.outputs.artifact }}"
+          $response = Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing
+          if ($response.StatusCode -eq 200 -or $response.StatusCode -eq 302) {
+            Write-Host "Skip uploading ${{ needs.build-wsa-1.outputs.artifact }}.zip because it already exists in the release assets."
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "need_upload=false"
+          } else {
+            Write-Host "Wait uploading ${{ needs.build-wsa-1.outputs.artifact }}.zip because it does not exist in the release assets."
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "need_upload=true"
+          }
+
+      - name: Upload to Artifacts 📤
+        if: steps.check.outputs.need_upload == 'true'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ needs.build-wsa-1.outputs.artifact }}.zip
+          path: output
+
+      - name: Update build to release 🤌
+        uses: softprops/action-gh-release@v0.1.15
+        if: steps.check.outputs.need_upload == 'true'
+        with:
+          files: ${{ github.workspace }}/output/${{ needs.build-wsa-1.outputs.artifact }}.zip
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ needs.build-wsa-1.outputs.WSAVER }}_x64
+          body: |
+            - ${{ needs.build-wsa-1.outputs.artifact }}.zip
+              ```yaml
+              MD5: ${{ steps.hash.outputs.MD5 }}
+              SHA256: ${{ steps.hash.outputs.SHA256 }}
+              ```
+          token: ${{ secrets.PAT }}
