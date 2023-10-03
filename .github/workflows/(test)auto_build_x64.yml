@@ -126,42 +126,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download built artifact 📥
-        uses: actions/download-artifact@v3
-        with:
-          path: output/
-          name: ${{ needs.build-wsa-1.outputs.artifact }}
-
-      - name: Remove unused artifact 🗑️
-        uses: geekyeggo/delete-artifact@v2
-        with:
-          name: ${{ needs.build-wsa-1.outputs.artifact }}
-
-      - name: Merge language and density resources 📂
-        run: (Start-Process pwsh.exe -NoNewWindow -PassThru -Args "-ExecutionPolicy Bypass -File MakePri.ps1" -WorkingDirectory "${{ github.workspace }}\output\${{ needs.build-wsa-1.outputs.artifact }}").WaitForExit()
-
-      - name: Compact Images 💿
-        run: |
-         foreach ($Partition in 'system','product','system_ext','vendor') {
-             Write-Output "Optimizing of $Partition..."
-             Write-Output "SELECT VDISK FILE=`"${{ github.workspace }}\output\${{ needs.build-wsa-1.outputs.artifact }}\$Partition.vhdx`"`
-         ATTACH VDISK READONLY`
-         COMPACT VDISK`
-         DETACH VDISK" | Set-Content -Path "$Partition.txt" -Encoding Ascii
-             Start-Process -NoNewWindow -Wait "diskpart.exe" -Args "/s $Partition.txt" -RedirectStandardOutput NUL
-         }
-
-      - name: Compress Zip and Add checksum 📦
-        if: success()
-        id: hash
-        working-directory: output
-        run: |
-          7z a -tzip ${{ needs.build-wsa-1.outputs.artifact }}.zip ${{ needs.build-wsa-1.outputs.artifact }}\*
-          Remove-Item -Recurse -Force ${{ needs.build-wsa-1.outputs.artifact }}
-          $md5 = (Get-FileHash -Path $zipFileName -Algorithm MD5).Hash.ToLower()
-          $sha256 = (Get-FileHash -Path $zipFileName -Algorithm SHA256).Hash.ToLower()
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "MD5=$md5"
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "SHA256=$sha256"
 
       - name: Check If Need Upload 🤔
         id: check
@@ -176,12 +140,54 @@ jobs:
             Add-Content -Path $env:GITHUB_OUTPUT -Value "need_upload=true"
           }
 
+      - name: Download built artifact 📥
+        uses: actions/download-artifact@v3
+        if: steps.check.outputs.need_upload == 'true'
+        with:
+          path: output/
+          name: ${{ needs.build-wsa-1.outputs.artifact }}
+
+      - name: Remove unused artifact 🗑️
+        uses: geekyeggo/delete-artifact@v2
+        if: steps.check.outputs.need_upload == 'true'
+        with:
+          name: ${{ needs.build-wsa-1.outputs.artifact }}
+
+      - name: Merge language and density resources 📂
+        if: steps.check.outputs.need_upload == 'true'
+        run: (Start-Process pwsh.exe -NoNewWindow -PassThru -Args "-ExecutionPolicy Bypass -File MakePri.ps1" -WorkingDirectory "${{ github.workspace }}\output\${{ needs.build-wsa-1.outputs.artifact }}").WaitForExit()
+
+      - name: Compact Images 💿
+        if: steps.check.outputs.need_upload == 'true'
+        run: |
+         foreach ($Partition in 'system','product','system_ext','vendor') {
+             Write-Output "Optimizing of $Partition..."
+             Write-Output "SELECT VDISK FILE=`"${{ github.workspace }}\output\${{ needs.build-wsa-1.outputs.artifact }}\$Partition.vhdx`"`
+         ATTACH VDISK READONLY`
+         COMPACT VDISK`
+         DETACH VDISK" | Set-Content -Path "$Partition.txt" -Encoding Ascii
+             Start-Process -NoNewWindow -Wait "diskpart.exe" -Args "/s $Partition.txt" -RedirectStandardOutput NUL
+         }
+
+      - name: Compress Zip and Add checksum 📦
+        if: steps.check.outputs.need_upload == 'true'
+        id: hash
+        working-directory: output
+        run: |
+          $zipFileName = "${{ needs.build-wsa-1.outputs.artifact }}.zip"
+          7z a -tzip -mx9 -mmt=on $zipFileName ${{ needs.build-wsa-1.outputs.artifact }}\*
+          Remove-Item -Recurse -Force ${{ needs.build-wsa-1.outputs.artifact }}
+          $md5 = (Get-FileHash -Path $zipFileName -Algorithm MD5).Hash.ToLower()
+          $sha256 = (Get-FileHash -Path $zipFileName -Algorithm SHA256).Hash.ToLower()
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "MD5=$md5"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "SHA256=$sha256"
+
       - name: Upload to Artifacts 📤
         if: steps.check.outputs.need_upload == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: ${{ needs.build-wsa-1.outputs.artifact }}.zip
-          path: output
+          path: output/${{ needs.build-wsa-1.outputs.artifact }}.zip
 
       - name: Update build to release 🤌
         uses: softprops/action-gh-release@v0.1.15
