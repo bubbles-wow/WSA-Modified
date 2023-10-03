@@ -202,6 +202,7 @@ ROOT_SOL_MAP=(
 COMPRESS_FORMAT_MAP=(
     "7z"
     "zip"
+    "none"
 )
 
 ARGUMENT_LIST=(
