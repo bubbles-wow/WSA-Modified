@@ -126,11 +126,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-
       - name: Check If Need Upload 🤔
         id: check
         run: |
-          $url = "https://github.com/${{ github.repository }}/releases/download/WSA_${{ needs.build-wsa-1.outputs.WSAVER }}_x64/${{ needs.build-wsa-1.outputs.artifact }}"
+          $url = "https://github.com/${{ github.repository }}/releases/download/WSA_${{ needs.build-wsa-1.outputs.WSAVER }}_x64/${{ needs.build-wsa-1.outputs.artifact }}.zip"
           $response = Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing
           if ($response.StatusCode -eq 200 -or $response.StatusCode -eq 302) {
             Write-Host "Skip uploading ${{ needs.build-wsa-1.outputs.artifact }}.zip because it already exists in the release assets."
