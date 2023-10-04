@@ -70,11 +70,6 @@ default() {
     ROOT_SOL=magisk
 }
 
-exit_with_message() {
-    echo "ERROR: $1"
-    exit 1
-}
-
 vhdx_to_raw_img() {
     qemu-img convert -q -f vhdx -O raw "$1" "$2" || return 1
     rm -f "$1" || return 1
@@ -191,6 +186,7 @@ CUSTOM_MODEL_MAP=(
     "cheetah"
     "lynx"
     "tangorpro"
+    "felix"
 )
 
 ROOT_SOL_MAP=(
@@ -213,6 +209,7 @@ ARGUMENT_LIST=(
     "custom-model:"
     "root-sol:"
     "compress-format:"
+    "after-compress"
     "remove-amazon"
 )
 
@@ -224,7 +221,7 @@ opts=$(
         --name "$(basename "$0")" \
         --options "" \
         -- "$@"
-) || exit_with_message "Failed to parse options, please check your input"
+) || abort "Failed to parse options, please check your input"
 
 eval set --"$opts"
 while [[ $# -gt 0 ]]; do
@@ -235,6 +232,7 @@ while [[ $# -gt 0 ]]; do
         --custom-model      ) CUSTOM_MODEL="$2"; shift 2;;
         --root-sol          ) ROOT_SOL="$2"; shift 2 ;;
         --compress-format   ) COMPRESS_FORMAT="$2"; shift 2 ;;
+        --after-compress    ) AFTER_COMPRESS="yes"; shift ;;
         --remove-amazon     ) REMOVE_AMAZON="yes"; shift ;;
         --magisk-ver        ) MAGISK_VER="$2"; shift 2 ;;
         --                  ) shift; break;;
@@ -255,7 +253,7 @@ check_list() {
             fi
             ((list_count--))
             if (("$list_count" <= 0)); then
-                exit_with_message "Invalid $name: $input"
+                abort "Invalid $name: $input"
             fi
         done
     fi
@@ -289,10 +287,12 @@ GAPPS_PATH=$DOWNLOAD_DIR/$GAPPS_ZIP_NAME
 WSA_MAJOR_VER=0
 
 update_ksu_zip_name() {
-    KERNEL_VER="5.15.104.2"
-    if [ "$WSA_MAJOR_VER" -ge "2308" ]; then
-        KERNEL_VER="5.15.104.3"
-    fi
+    KERNEL_VER=""
+    case "$WSA_MAJOR_VER" in
+      "2308") KERNEL_VER="5.15.104.3";;
+      "2309") KERNEL_VER="5.15.104.3";;
+      *) abort "KernelSU is not supported in this WSA version: $WSA_MAJOR_VER"
+    esac
     KERNELSU_ZIP_NAME=kernelsu-$ARCH-$KERNEL_VER.zip
     KERNELSU_PATH=$DOWNLOAD_DIR/$KERNELSU_ZIP_NAME
     KERNELSU_APK_PATH=$DOWNLOAD_DIR/KernelSU.apk
@@ -302,6 +302,7 @@ update_gapps_zip_name() {
     GAPPS_ZIP_NAME=MindTheGapps-$ARCH-13.0.zip
     GAPPS_PATH=$DOWNLOAD_DIR/$GAPPS_ZIP_NAME
 }
+
 echo "Generate Download Links"
 if [ "$RELEASE_TYPE" != "latest" ]; then
     python3 generateWSALinks.py "$ARCH" "$RELEASE_TYPE" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
@@ -312,7 +313,7 @@ else
     printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     printf "  out=wsa-latest.zip\n" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     mkdir -p "$DOWNLOAD_DIR/xaml"
-    curl -sO "https://globalcdn.nuget.org/packages/microsoft.ui.xaml.2.8.4.nupkg" --output-dir "$DOWNLOAD_DIR/xaml"
+    curl -sO "https://globalcdn.nuget.org/packages/microsoft.ui.xaml.2.8.5.nupkg" --output-dir "$DOWNLOAD_DIR/xaml"
     7z x $DOWNLOAD_DIR/xaml/*.nupkg -o../download/ | tail -4
     mv "$DOWNLOAD_DIR/tools/AppX/$ARCH/Release/Microsoft.UI.Xaml.2.8.appx" "$xaml_PATH"
     printf "https://aka.ms/Microsoft.VCLibs.%s.14.00.Desktop.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
@@ -322,7 +323,7 @@ else
     printf "  dir=%s\n" "$DOWNLOAD_DIR" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     printf "  out=Microsoft.VCLibs.140.00_%s.appx\n" "$ARCH" >> "$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME" || abort
     WSA_VER=$(curl -sL https://api.github.com/repos/bubbles-wow/WSA-Archive/releases/latest | jq -r '.tag_name')
-    WSA_MAJOR_VER=${WSA_VER:0:3}
+    WSA_MAJOR_VER=${WSA_VER:0:4}
 fi
 if [ "$ROOT_SOL" = "magisk" ] || [ "$GAPPS_BRAND" != "none" ]; then
     python3 generateMagiskLink.py "$MAGISK_VER" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
@@ -508,7 +509,7 @@ if [ "$REMOVE_AMAZON" ]; then
 fi
 
 echo "Add device administration features"
-sudo sed -i -e '/cts/a \ \ \ \ <feature name="android.software.device_admin" />' "$VENDOR_MNT/etc/permissions/windows.permissions.xml"
+sudo sed -ie '/cts/a \    <feature name="android.software.device_admin" />' -e '/print/i \    <feature name="android.software.managed_users" />' "$VENDOR_MNT/etc/permissions/windows.permissions.xml"
 sudo setfattr -n security.selinux -v "u:object_r:vendor_configs_file:s0" "$VENDOR_MNT/etc/permissions/windows.permissions.xml" || abort
 echo -e "done\n"
 
@@ -614,13 +615,13 @@ echo "\nKernelSU Install Manager"
 if [ ! -e "/storage/emulated/0/.ksu_completed_$KERNELSU_VER" ]; then
     echo "\nInstalling KernelSU APK"
     pm install -i android -r /system/data-app/KernelSU.apk
-    echo "\nLaunching KernelSU App"
-    am start -n me.weishu.kernelsu/.ui.MainActivity
     touch "/storage/emulated/0/.ksu_completed_$KERNELSU_VER"
     echo "\nDone!\n"
 else
     echo "\nLatest KernelSU Manager is installed.\n"
 fi
+echo "\nLaunching KernelSU App\n"
+am start -n me.weishu.kernelsu/.ui.MainActivity
 EOF
     # Grant access
     sudo chmod 0755 "$KSU_PRE"
@@ -673,7 +674,7 @@ fi
 if [[ "$CUSTOM_MODEL" != "none" ]]; then
     echo "Fix system props"
     # The first argument is prop path, second is product name (redfin), third is device model (Pixel 5)
-    declare -A MODEL_NAME_MAP=(["sunfish"]="Pixel 4a" ["bramble"]="Pixel 4a (5G)" ["redfin"]="Pixel 5" ["barbet"]="Pixel 5a" ["raven"]="Pixel 6 Pro" ["oriole"]="Pixel 6" ["bluejay"]="Pixel 6a" ["panther"]="Pixel 7" ["cheetah"]="Pixel 7 Pro" ["lynx"]="Pixel 7a" ["tangorpro"]="Pixel Tablet")
+    declare -A MODEL_NAME_MAP=(["sunfish"]="Pixel 4a" ["bramble"]="Pixel 4a (5G)" ["redfin"]="Pixel 5" ["barbet"]="Pixel 5a" ["raven"]="Pixel 6 Pro" ["oriole"]="Pixel 6" ["bluejay"]="Pixel 6a" ["panther"]="Pixel 7" ["cheetah"]="Pixel 7 Pro" ["lynx"]="Pixel 7a" ["tangorpro"]="Pixel Tablet" ["felix"]="Pixel Fold")
     MODEL_NAME="${MODEL_NAME_MAP[$CUSTOM_MODEL]}"
     sudo python3 fixGappsProp.py "$ROOT_MNT" "$CUSTOM_MODEL" "$MODEL_NAME" || abort
     # shellcheck disable=SC2002
@@ -786,6 +787,7 @@ fi
 artifact_name=WSA_${WSA_VER}_${ARCH}_${WSA_REL}${name1}${name2}${name3}
 if [ "$REMOVE_AMAZON" = "yes" ]; then
     artifact_name+="-RemovedAmazon"
+    touch "$WORK_DIR/wsa/$ARCH/apex/.gitkeep"
 fi
 echo "$artifact_name"
 echo "artifact=${artifact_name}" >> "$GITHUB_OUTPUT"
