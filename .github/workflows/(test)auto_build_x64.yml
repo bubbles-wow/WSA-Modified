@@ -108,7 +108,21 @@ jobs:
         run: |
           ./scripts/build.sh --custom-model lynx --arch x64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver stable --remove-amazon --compress-format none
 
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${{ steps.build.outputs.WSAVER }}_x64/${{ steps.build.outputs.artifact }}.zip"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading ${{ steps.build.outputs.artifact }} because it already exists in the release assets."
+            echo "need_upload=false" >> $GITHUB_OUTPUT
+          else
+            echo "Wait uploading ${{ steps.build.outputs.artifact }} because it does not exist in the release assets."
+            echo "need_upload=true" >> $GITHUB_OUTPUT
+          fi
+    
       - name: Pass to Windows
+        if: steps.check.outputs.need_upload == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: ${{ steps.build.outputs.artifact }}
@@ -117,11 +131,14 @@ jobs:
     outputs:
       WSAVER: ${{ steps.build.outputs.WSAVER }}
       artifact: ${{ steps.build.outputs.artifact }}
+      need_upload: ${{ steps.check.outputs.need_upload }}
+
 
   make-pri:
     name: Merge PRI resources and compress images 💿
     runs-on: windows-latest
     needs: build-wsa-1
+    if: needs.build-wsa-1.outputs.need_upload == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -141,23 +158,19 @@ jobs:
 
       - name: Download built artifact 📥
         uses: actions/download-artifact@v3
-        if: steps.check.outputs.need_upload == 'true'
         with:
           path: output/
           name: ${{ needs.build-wsa-1.outputs.artifact }}
 
       - name: Remove unused artifact 🗑️
         uses: geekyeggo/delete-artifact@v2
-        if: steps.check.outputs.need_upload == 'true'
         with:
           name: ${{ needs.build-wsa-1.outputs.artifact }}
 
       - name: Merge language and density resources 📂
-        if: steps.check.outputs.need_upload == 'true'
         run: (Start-Process pwsh.exe -NoNewWindow -PassThru -Args "-ExecutionPolicy Bypass -File MakePri.ps1" -WorkingDirectory "${{ github.workspace }}\output\${{ needs.build-wsa-1.outputs.artifact }}").WaitForExit()
 
       - name: Compact Images 💿
-        if: steps.check.outputs.need_upload == 'true'
         run: |
          foreach ($Partition in 'system','product','system_ext','vendor') {
              Write-Output "Optimizing of $Partition..."
@@ -169,7 +182,6 @@ jobs:
          }
 
       - name: Compress Zip and Add checksum 📦
-        if: steps.check.outputs.need_upload == 'true'
         id: hash
         working-directory: output
         run: |
@@ -182,7 +194,6 @@ jobs:
           Add-Content -Path $env:GITHUB_OUTPUT -Value "SHA256=$sha256"
 
       - name: Upload to Artifacts 📤
-        if: steps.check.outputs.need_upload == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: ${{ needs.build-wsa-1.outputs.artifact }}.zip
@@ -190,7 +201,6 @@ jobs:
 
       - name: Update build to release 🤌
         uses: softprops/action-gh-release@v0.1.15
-        if: steps.check.outputs.need_upload == 'true'
         with:
           files: ${{ github.workspace }}/output/${{ needs.build-wsa-1.outputs.artifact }}.zip
           fail_on_unmatched_files: true
