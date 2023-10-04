@@ -173,7 +173,7 @@ jobs:
         working-directory: output
         run: |
           $zipFileName = "${{ needs.build-wsa-1.outputs.artifact }}.zip"
-          7z a -tzip -mx9 -mmt=on $zipFileName ${{ needs.build-wsa-1.outputs.artifact }}\*
+          7z a -tzip $zipFileName ${{ needs.build-wsa-1.outputs.artifact }}\*
           Remove-Item -Recurse -Force ${{ needs.build-wsa-1.outputs.artifact }}
           $md5 = (Get-FileHash -Path $zipFileName -Algorithm MD5).Hash.ToLower()
           $sha256 = (Get-FileHash -Path $zipFileName -Algorithm SHA256).Hash.ToLower()
