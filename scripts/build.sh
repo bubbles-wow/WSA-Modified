@@ -198,7 +198,6 @@ ROOT_SOL_MAP=(
 COMPRESS_FORMAT_MAP=(
     "7z"
     "zip"
-    "none"
 )
 
 ARGUMENT_LIST=(
@@ -290,7 +289,7 @@ update_ksu_zip_name() {
     KERNEL_VER=""
     case "$WSA_MAJOR_VER" in
       "2308") KERNEL_VER="5.15.104.3";;
-      "2309") KERNEL_VER="5.15.104.3";;
+      "2309") KERNEL_VER="5.15.104.4";;
       *) abort "KernelSU is not supported in this WSA version: $WSA_MAJOR_VER"
     esac
     KERNELSU_ZIP_NAME=kernelsu-$ARCH-$KERNEL_VER.zip
@@ -509,7 +508,7 @@ if [ "$REMOVE_AMAZON" ]; then
 fi
 
 echo "Add device administration features"
-sudo sed -ie '/cts/a \    <feature name="android.software.device_admin" />' -e '/print/i \    <feature name="android.software.managed_users" />' "$VENDOR_MNT/etc/permissions/windows.permissions.xml"
+sudo sed -i -e '/cts/a \    <feature name="android.software.device_admin" />' -e '/print/i \    <feature name="android.software.managed_users" />' "$VENDOR_MNT/etc/permissions/windows.permissions.xml"
 sudo setfattr -n security.selinux -v "u:object_r:vendor_configs_file:s0" "$VENDOR_MNT/etc/permissions/windows.permissions.xml" || abort
 echo -e "done\n"
 
@@ -739,34 +738,31 @@ cp "$VCLibs_PATH" "$xaml_PATH" "$WORK_DIR/wsa/$ARCH/uwp/" || abort
 cp "$UWPVCLibs_PATH" "$xaml_PATH" "$WORK_DIR/wsa/$ARCH/uwp/" || abort
 cp "../xml/priconfig.xml" "$WORK_DIR/wsa/$ARCH/xml/" || abort
 if [[ "$ROOT_SOL" = "none" ]] && [[ "$GAPPS_BRAND" = "none" ]] && [[ "$REMOVE_AMAZON" == "yes" ]]; then
-    sed -i -e 's@Start-Process\ "wsa://com.topjohnwu.magisk"@@g' ../installer/Install.ps1
-    sed -i -e 's@Start-Process\ "wsa://com.android.vending"@@g' ../installer/Install.ps1
+    sed -i -e 's@Start-Process\ "wsa://com.topjohnwu.magisk"@@g' "../installer/$ARCH/Install.ps1"
+    sed -i -e 's@Start-Process\ "wsa://com.android.vending"@@g' "../installer/$ARCH/Install.ps1"
 else
     if [[ "$ROOT_SOL" == "none" ]]; then
-        sed -i -e 's@Start-Process "wsa://com.topjohnwu.magisk"@@g' ../installer/Install.ps1
+        sed -i -e 's@Start-Process "wsa://com.topjohnwu.magisk"@@g' "../installer/$ARCH/Install.ps1"
     elif [[ "$ROOT_SOL" = "kernelsu" ]]; then
-        sed -i -e 's@wsa://com.topjohnwu.magisk@https://github.com/YT-Advanced/WSA-Script/blob/HEAD/docs/Guides/KernelSU.md@g' ../installer/Install.ps1
+        sed -i -e 's@wsa://com.topjohnwu.magisk@https://github.com/YT-Advanced/WSA-Script/blob/HEAD/docs/Guides/KernelSU.md@g' "../installer/$ARCH/Install.ps1"
     elif [[ "$MAGISK_VER" = "delta" ]]; then
-        sed -i -e 's@com.topjohnwu.magisk@io.github.huskydg.magisk@g' ../installer/Install.ps1
+        sed -i -e 's@com.topjohnwu.magisk@io.github.huskydg.magisk@g' "../installer/$ARCH/Install.ps1"
     elif [[ "$MAGISK_VER" = "alpha" ]]; then
-        sed -i -e 's@com.topjohnwu.magisk@io.github.vvb2060.magisk@g' ../installer/Install.ps1
+        sed -i -e 's@com.topjohnwu.magisk@io.github.vvb2060.magisk@g' "../installer/$ARCH/Install.ps1"
     fi
     if [[ "$GAPPS_BRAND" = "none" ]] && [[ "$REMOVE_AMAZON" != "yes" ]]; then
-        sed -i -e 's@com.android.vending@com.amazon.venezia@g' ../installer/Install.ps1
+        sed -i -e 's@com.android.vending@com.amazon.venezia@g' "../installer/$ARCH/Install.ps1"
     elif [[ "$GAPPS_BRAND" = "none" ]]; then
-        sed -i -e 's@Start-Process\ "wsa://com.android.vending"@@g' ../installer/Install.ps1
+        sed -i -e 's@Start-Process\ "wsa://com.android.vending"@@g' "../installer/$ARCH/Install.ps1"
     fi
 fi
-cp ../installer/Install.ps1 "$WORK_DIR/wsa/$ARCH" || abort
-find "$WORK_DIR/wsa/$ARCH" -not -path "*/uwp*" -not -path "*/Licenses*" -not -path "*/pri*" -not -path "*/xml*" -printf "%P\n" | sed -e 's@/@\\@g' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist.txt" || abort
+cp "../installer/$ARCH/Install.ps1" "$WORK_DIR/wsa/$ARCH" || abort
+find "$WORK_DIR/wsa/$ARCH" -not -path "*/uwp*" -not -path "*/pri*" -not -path "*/xml*" -printf "%P\n" | sed -e 's@/@\\@g' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist.txt" || abort
 find "$WORK_DIR/wsa/$ARCH/pri" -printf "%P\n" | sed -e 's/^/pri\\/' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist-pri.txt" || abort
 find "$WORK_DIR/wsa/$ARCH/xml" -printf "%P\n" | sed -e 's/^/xml\\/' -e '/^$/d' >> "$WORK_DIR/wsa/$ARCH/filelist-pri.txt" || abort
-find "$WORK_DIR/wsa/$ARCH/uwp" -printf "%P\n" | sed -e 's/^/uwp\\/' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist-uwp.txt" || abort
-cp "../bin/$ARCH/makepri.exe" "$WORK_DIR/wsa/$ARCH" || abort
-echo "makepri.exe" >> "$WORK_DIR/wsa/$ARCH/filelist-pri.txt" || abort
-cp ../installer/MakePri.ps1 "$WORK_DIR/wsa/$ARCH" || abort
+cp "../installer/$ARCH/MakePri.ps1" "$WORK_DIR/wsa/$ARCH" || abort
 cp ../installer/Run.bat "$WORK_DIR/wsa/$ARCH" || abort
-echo -e "Remove signature and add scripts done\n"
+echo -e "Remove signature and Add scripts done\n"
 
 echo "Generate info"
 if [[ "$ROOT_SOL" = "none" ]]; then
@@ -790,27 +786,22 @@ if [ "$REMOVE_AMAZON" = "yes" ]; then
     touch "$WORK_DIR/wsa/$ARCH/apex/.gitkeep"
 fi
 echo "$artifact_name"
-echo "artifact=${artifact_name}" >> "$GITHUB_OUTPUT"
 echo -e "\nFinishing building...."
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_PATH="${OUTPUT_DIR:?}/$artifact_name"
 mv "$WORK_DIR/wsa/$ARCH" "$WORK_DIR/wsa/$artifact_name"
-echo "file_ext=.${COMPRESS_FORMAT}" >> "$GITHUB_OUTPUT"
-if [ "$COMPRESS_FORMAT" = "7z" ]; then
+{
+  echo "artifact=${artifact_name}"
+  echo "arch=${ARCH}"
+  echo "file_ext=.${COMPRESS_FORMAT}"
+  echo "built=$(date -u +%Y%m%d%H%M%S)"
+} >> "$GITHUB_OUTPUT"
+if [[ "$COMPRESS_FORMAT" = "7z" && -z $AFTER_COMPRESS ]]; then
     echo "Compressing with 7-Zip"
     OUTPUT_PATH="$OUTPUT_PATH.7z"
     7z a -mx=7 "${OUTPUT_PATH:?}" "$WORK_DIR/wsa/$artifact_name" || abort
-    echo "artifact=${artifact_name}.7z" >> "$GITHUB_OUTPUT"
-elif [ "$COMPRESS_FORMAT" = "zip" ]; then
-    echo "Compressing with zip"
-    OUTPUT_PATH="$OUTPUT_PATH.zip"
-    7z -tzip a "$OUTPUT_PATH" "$WORK_DIR/wsa/$artifact_name" || abort
-    echo "artifact=${artifact_name}.zip" >> "$GITHUB_OUTPUT"
 else
-    echo "Skip compressing files"
-    mv "$WORK_DIR/wsa/$artifact_name" "$OUTPUT_DIR"
+    echo "Compressing with ZIP later..."
+    cp -r "$WORK_DIR/wsa/$artifact_name" "$OUTPUT_PATH" || abort
 fi
-echo "Deleting work dir..."
-rm -r "$WORK_DIR"
-echo "WSAVER=$WSA_VER" >> "$GITHUB_OUTPUT"
 echo -e "Done\n"

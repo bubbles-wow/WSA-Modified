@@ -1,5 +1,6 @@
 import os
 import html
+import time
 import base64
 import logging
 import requests
@@ -35,7 +36,8 @@ cat_id = '858014f3-3934-4abe-8078-4aa193e74ca8'
 session = Session()
 session.verify = False
 
-def checker(user, release_type):
+def checker(user):
+    global release_type
     with open("./xml/GetCookie.xml", "r") as f:
         cookie_content = f.read().format(user)
         f.close()
@@ -89,26 +91,29 @@ def checker(user, release_type):
         reverse=False
     )
     wsa_latest_ver = info_list[-1].split("_")[1]
-    os.popen(f"echo \"WSAVER={wsa_latest_ver}\" >> \"$GITHUB_OUTPUT\"")
+    os.popen(f"echo \"version={wsa_latest_ver}\" >> \"$GITHUB_OUTPUT\"")
 
 user_code = ""
-try:
-    response = requests.get("https://api.github.com/repos/bubbles-wow/MS-Account-Token/contents/token.cfg")
-    if response.status_code == 200:
-        content = response.json()["content"]
-        content = content.encode("utf-8")
-        content = base64.b64decode(content)
-        text = content.decode("utf-8")
-        user_code = Prop(text).get("user_code")
-        updatetime = Prop(text).get("update_time")
-        print("Successfully get user token from server!")
-        print(f"Last update time: {updatetime}\n")
-    else:
+while user_code == "":
+    try:
+        response = requests.get("https://api.github.com/repos/bubbles-wow/MS-Account-Token/contents/token.cfg")
+        if response.status_code == 200:
+            content = response.json()["content"]
+            content = content.encode("utf-8")
+            content = base64.b64decode(content)
+            text = content.decode("utf-8")
+            user_code = Prop(text).get("user_code")
+            updatetime = Prop(text).get("update_time")
+            print("Successfully get user token from server!")
+            print(f"Last update time: {updatetime}\n")
+        else:
+            user_code = ""
+            print(f"Failed to get user token from server! Error code: {response.status_code}\n")
+            time.sleep(5)
+    except:
         user_code = ""
-        print(f"Failed to get user token from server! Error code: {response.status_code}\n")
-except:
-    user_code = ""
-    print("Failed to get user token from server!\n")
-checker(user_code, release_type)
+        print("Failed to get user token from server!\n")
+        time.sleep(5)
+checker(user_code)
 
         

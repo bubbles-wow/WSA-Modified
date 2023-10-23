@@ -1,0 +1,612 @@
+name: Build All ARM64 (Magisk)
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Get latest version 📥
+        id: get
+        run: |
+          pip3 install requests
+          python3 ./scripts/getWSAVersion.py
+
+      - name: Check if release exists 🤔
+        id: check
+        run: |
+          version=""
+          if [ -n "${{ inputs.version }}" ]; then
+            if [ "${{ steps.get.outputs.version }}" \> "${{ inputs.version }}" ]; then
+              echo "oldver=true" >> $GITHUB_OUTPUT
+              version=${{ inputs.version }}
+              echo "version=$version" >> $GITHUB_OUTPUT
+            else
+              echo "oldver=false" >> $GITHUB_OUTPUT
+              version=${{ steps.get.outputs.version }}
+              echo "version=$version" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "oldver=false" >> $GITHUB_OUTPUT
+            version=${{ steps.get.outputs.version }}
+            echo "version=$version" >> $GITHUB_OUTPUT
+          fi
+          response=$(curl -s -H "Authorization: Bearer ${{ secrets.PAT }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/WSA_${version}_arm64")
+          if [ ${#response} -gt 200 ]; then
+            echo "Release already exists"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Release does not exist"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create release 🤌
+        if: steps.check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ steps.check.outputs.version }}_arm64
+          body: |
+            ## Hashes
+          token: ${{ secrets.PAT }}
+
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      oldver: ${{ steps.check.outputs.oldver }}
+
+  build-1:
+    name: Build WSA
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Setup Python3 Virtual Enviroment 🐍
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          # shellcheck disable=SC1091
+          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
+          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
+              echo "Installing Python3 dependencies"
+              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
+          }
+          deactivate
+
+      - name: Install Ubuntu Dependencies 🧑‍🏭
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: e2fsprogs attr unzip qemu-utils python3-venv
+          version: 1.0
+
+      - name: Set Up User Code 🤖
+        if: needs.check.outputs.oldver == 'false'
+        id: set
+        run: |
+          mkdir -p download
+          touch ./download/.ms_account
+          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | grep -oP "user_code='\K[^']+")" > ./download/.ms_account
+
+      - name: Build WSA 🏗️
+        id: wsa
+        run: |
+          mkdir -p download
+          ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver stable --remove-amazon --compress-format zip
+
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          version=$(echo "${{ steps.wsa.outputs.artifact }}" | cut -d'_' -f2)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_x64/${{ steps.wsa.outputs.artifact }}.zip"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading!"
+            echo "need=false" >> $GITHUB_OUTPUT
+          else
+            echo "Wait uploading!"
+            echo "need=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pass to Windows 💸
+        uses: actions/cache/save@v3
+        if: steps.check.outputs.need == 'true'
+        with:
+          path: output
+          key: ${{ steps.wsa.outputs.artifact }}-${{ steps.wsa.outputs.built }}
+          enableCrossOsArchive: true
+
+    outputs:
+      artifact: ${{ steps.wsa.outputs.artifact }}
+      built: ${{ steps.wsa.outputs.built }}
+      version: ${{ steps.check.outputs.version }}
+      need: ${{ steps.check.outputs.need }}
+
+  make-pri-1:
+    name: Merge PRI resources
+    runs-on: windows-latest
+    needs: build-1
+    if: needs.build-1.outputs.need == 'true'
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Download built artifact ⌛
+        uses: actions/cache/restore@v3
+        with:
+          path: output
+          key: ${{ needs.build-1.outputs.artifact }}-${{ needs.build-1.outputs.built }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
+      - name: Merge language and density resources 🧙🏻‍♂️
+        run: |
+            (Start-Process pwsh.exe -NoNewWindow -PassThru -Args "-ExecutionPolicy Bypass -File MakePri.ps1" -WorkingDirectory "${{ github.workspace }}\output\${{ needs.build-1.outputs.artifact }}").WaitForExit()
+
+      - name: Compact Images 💿
+        run: |
+         foreach ($Partition in 'system','product','system_ext','vendor') {
+             Write-Output "Optimizing of $Partition..."
+             Write-Output "SELECT VDISK FILE=`"${{ github.workspace }}\output\${{ needs.build-1.outputs.artifact }}\$Partition.vhdx`"`
+             ATTACH VDISK READONLY`
+             COMPACT VDISK`
+             DETACH VDISK" | Set-Content -Path "$Partition.txt" -Encoding Ascii
+             Start-Process -NoNewWindow -Wait "diskpart.exe" -Args "/s $Partition.txt" -RedirectStandardOutput NUL
+         }
+
+      - name: Compress Zip and Add checksum ✔️
+        id: zip
+        run: |
+          7z a -tzip ${{ needs.build-1.outputs.artifact }}.zip output\*
+          $md5Hash = $(Get-FileHash -Algorithm MD5 -Path ${{ needs.build-1.outputs.artifact }}.zip).Hash.ToLower().ToString()
+          $sha256Hash = $(Get-FileHash -Algorithm SHA256 -Path ${{ needs.build-1.outputs.artifact }}.zip).Hash.ToLower().ToString()
+          "md5=" + $md5Hash | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding UTF8 -Append
+          "sha256=" + $sha256Hash | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding UTF8 -Append
+
+      - name: Update build to release 🤌
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ needs.build-1.outputs.artifact }}.zip
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ needs.build-1.outputs.version }}_arm64
+          body: |
+            - ${{ needs.build-1.outputs.artifact }}.zip
+              ```yaml
+              MD5: ${{ steps.zip.outputs.md5 }}
+              SHA256: ${{ steps.zip.outputs.sha256 }}
+              ```
+          token: ${{ secrets.PAT }}
+
+  build-2:
+    name: Build WSA
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Setup Python3 Virtual Enviroment 🐍
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          # shellcheck disable=SC1091
+          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
+          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
+              echo "Installing Python3 dependencies"
+              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
+          }
+          deactivate
+
+      - name: Install Ubuntu Dependencies 🧑‍🏭
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: e2fsprogs attr unzip qemu-utils python3-venv
+          version: 1.0
+
+      - name: Set Up User Code 🤖
+        if: needs.check.outputs.oldver == 'false'
+        id: set
+        run: |
+          mkdir -p download
+          touch ./download/.ms_account
+          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | grep -oP "user_code='\K[^']+")" > ./download/.ms_account
+
+      - name: Build WSA 🏗️
+        id: wsa
+        run: |
+          mkdir -p download
+          ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand MindTheGapps --root-sol magisk --magisk-ver delta --remove-amazon --compress-format zip
+
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          version=$(echo "${{ steps.wsa.outputs.artifact }}" | cut -d'_' -f2)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_x64/${{ steps.wsa.outputs.artifact }}.zip"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading!"
+            echo "need=false" >> $GITHUB_OUTPUT
+          else
+            echo "Wait uploading!"
+            echo "need=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pass to Windows 💸
+        uses: actions/cache/save@v3
+        if: steps.check.outputs.need == 'true'
+        with:
+          path: output
+          key: ${{ steps.wsa.outputs.artifact }}-${{ steps.wsa.outputs.built }}
+          enableCrossOsArchive: true
+
+    outputs:
+      artifact: ${{ steps.wsa.outputs.artifact }}
+      built: ${{ steps.wsa.outputs.built }}
+      version: ${{ steps.check.outputs.version }}
+      need: ${{ steps.check.outputs.need }}
+
+  make-pri-2:
+    name: Merge PRI resources
+    runs-on: windows-latest
+    needs: build-2
+    if: needs.build-2.outputs.need == 'true'
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Download built artifact ⌛
+        uses: actions/cache/restore@v3
+        with:
+          path: output
+          key: ${{ needs.build-2.outputs.artifact }}-${{ needs.build-2.outputs.built }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
+      - name: Merge language and density resources 🧙🏻‍♂️
+        run: |
+            (Start-Process pwsh.exe -NoNewWindow -PassThru -Args "-ExecutionPolicy Bypass -File MakePri.ps1" -WorkingDirectory "${{ github.workspace }}\output\${{ needs.build-2.outputs.artifact }}").WaitForExit()
+
+      - name: Compact Images 💿
+        run: |
+         foreach ($Partition in 'system','product','system_ext','vendor') {
+             Write-Output "Optimizing of $Partition..."
+             Write-Output "SELECT VDISK FILE=`"${{ github.workspace }}\output\${{ needs.build-2.outputs.artifact }}\$Partition.vhdx`"`
+             ATTACH VDISK READONLY`
+             COMPACT VDISK`
+             DETACH VDISK" | Set-Content -Path "$Partition.txt" -Encoding Ascii
+             Start-Process -NoNewWindow -Wait "diskpart.exe" -Args "/s $Partition.txt" -RedirectStandardOutput NUL
+         }
+
+      - name: Compress Zip and Add checksum ✔️
+        id: zip
+        run: |
+          7z a -tzip ${{ needs.build-2.outputs.artifact }}.zip output\*
+          $md5Hash = $(Get-FileHash -Algorithm MD5 -Path ${{ needs.build-2.outputs.artifact }}.zip).Hash.ToLower().ToString()
+          $sha256Hash = $(Get-FileHash -Algorithm SHA256 -Path ${{ needs.build-2.outputs.artifact }}.zip).Hash.ToLower().ToString()
+          "md5=" + $md5Hash | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding UTF8 -Append
+          "sha256=" + $sha256Hash | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding UTF8 -Append
+
+      - name: Update build to release 🤌
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ needs.build-2.outputs.artifact }}.zip
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ needs.build-2.outputs.version }}_arm64
+          body: |
+            - ${{ needs.build-2.outputs.artifact }}.zip
+              ```yaml
+              MD5: ${{ steps.zip.outputs.md5 }}
+              SHA256: ${{ steps.zip.outputs.sha256 }}
+              ```
+          token: ${{ secrets.PAT }}
+
+  build-3:
+    name: Build WSA
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Setup Python3 Virtual Enviroment 🐍
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          # shellcheck disable=SC1091
+          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
+          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
+              echo "Installing Python3 dependencies"
+              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
+          }
+          deactivate
+
+      - name: Install Ubuntu Dependencies 🧑‍🏭
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: e2fsprogs attr unzip qemu-utils python3-venv
+          version: 1.0
+
+      - name: Set Up User Code 🤖
+        if: needs.check.outputs.oldver == 'false'
+        id: set
+        run: |
+          mkdir -p download
+          touch ./download/.ms_account
+          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | grep -oP "user_code='\K[^']+")" > ./download/.ms_account
+
+      - name: Build WSA 🏗️
+        id: wsa
+        run: |
+          mkdir -p download
+          ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver stable --remove-amazon --compress-format zip
+
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          version=$(echo "${{ steps.wsa.outputs.artifact }}" | cut -d'_' -f2)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_x64/${{ steps.wsa.outputs.artifact }}.zip"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading!"
+            echo "need=false" >> $GITHUB_OUTPUT
+          else
+            echo "Wait uploading!"
+            echo "need=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pass to Windows 💸
+        uses: actions/cache/save@v3
+        if: steps.check.outputs.need == 'true'
+        with:
+          path: output
+          key: ${{ steps.wsa.outputs.artifact }}-${{ steps.wsa.outputs.built }}
+          enableCrossOsArchive: true
+
+    outputs:
+      artifact: ${{ steps.wsa.outputs.artifact }}
+      built: ${{ steps.wsa.outputs.built }}
+      version: ${{ steps.check.outputs.version }}
+      need: ${{ steps.check.outputs.need }}
+
+  make-pri-3:
+    name: Merge PRI resources
+    runs-on: windows-latest
+    needs: build-3
+    if: needs.build-3.outputs.need == 'true'
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Download built artifact ⌛
+        uses: actions/cache/restore@v3
+        with:
+          path: output
+          key: ${{ needs.build-3.outputs.artifact }}-${{ needs.build-3.outputs.built }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
+      - name: Merge language and density resources 🧙🏻‍♂️
+        run: |
+            (Start-Process pwsh.exe -NoNewWindow -PassThru -Args "-ExecutionPolicy Bypass -File MakePri.ps1" -WorkingDirectory "${{ github.workspace }}\output\${{ needs.build-3.outputs.artifact }}").WaitForExit()
+
+      - name: Compact Images 💿
+        run: |
+         foreach ($Partition in 'system','product','system_ext','vendor') {
+             Write-Output "Optimizing of $Partition..."
+             Write-Output "SELECT VDISK FILE=`"${{ github.workspace }}\output\${{ needs.build-3.outputs.artifact }}\$Partition.vhdx`"`
+             ATTACH VDISK READONLY`
+             COMPACT VDISK`
+             DETACH VDISK" | Set-Content -Path "$Partition.txt" -Encoding Ascii
+             Start-Process -NoNewWindow -Wait "diskpart.exe" -Args "/s $Partition.txt" -RedirectStandardOutput NUL
+         }
+
+      - name: Compress Zip and Add checksum ✔️
+        id: zip
+        run: |
+          7z a -tzip ${{ needs.build-3.outputs.artifact }}.zip output\*
+          $md5Hash = $(Get-FileHash -Algorithm MD5 -Path ${{ needs.build-3.outputs.artifact }}.zip).Hash.ToLower().ToString()
+          $sha256Hash = $(Get-FileHash -Algorithm SHA256 -Path ${{ needs.build-3.outputs.artifact }}.zip).Hash.ToLower().ToString()
+          "md5=" + $md5Hash | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding UTF8 -Append
+          "sha256=" + $sha256Hash | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding UTF8 -Append
+
+      - name: Update build to release 🤌
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ needs.build-3.outputs.artifact }}.zip
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ needs.build-3.outputs.version }}_arm64
+          body: |
+            - ${{ needs.build-3.outputs.artifact }}.zip
+              ```yaml
+              MD5: ${{ steps.zip.outputs.md5 }}
+              SHA256: ${{ steps.zip.outputs.sha256 }}
+              ```
+          token: ${{ secrets.PAT }}
+
+  build-4:
+    name: Build WSA
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 👷
+        uses: actions/setup-python@v4
+        with:
+          check-latest: true
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: scripts/
+
+      - name: Setup Python3 Virtual Enviroment 🐍
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
+          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          # shellcheck disable=SC1091
+          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
+          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
+              echo "Installing Python3 dependencies"
+              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
+          }
+          deactivate
+
+      - name: Install Ubuntu Dependencies 🧑‍🏭
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: e2fsprogs attr unzip qemu-utils python3-venv
+          version: 1.0
+
+      - name: Set Up User Code 🤖
+        if: needs.check.outputs.oldver == 'false'
+        id: set
+        run: |
+          mkdir -p download
+          touch ./download/.ms_account
+          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | grep -oP "user_code='\K[^']+")" > ./download/.ms_account
+
+      - name: Build WSA 🏗️
+        id: wsa
+        run: |
+          mkdir -p download
+          ./scripts/build.sh --custom-model redfin --arch arm64 --release-type WIF --gapps-brand none --root-sol magisk --magisk-ver delta --remove-amazon --compress-format zip
+
+      - name: Check If Need Upload 🤔
+        id: check
+        run: |
+          version=$(echo "${{ steps.wsa.outputs.artifact }}" | cut -d'_' -f2)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_x64/${{ steps.wsa.outputs.artifact }}.zip"
+          response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+          if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
+            echo "Skip uploading!"
+            echo "need=false" >> $GITHUB_OUTPUT
+          else
+            echo "Wait uploading!"
+            echo "need=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pass to Windows 💸
+        uses: actions/cache/save@v3
+        if: steps.check.outputs.need == 'true'
+        with:
+          path: output
+          key: ${{ steps.wsa.outputs.artifact }}-${{ steps.wsa.outputs.built }}
+          enableCrossOsArchive: true
+
+    outputs:
+      artifact: ${{ steps.wsa.outputs.artifact }}
+      built: ${{ steps.wsa.outputs.built }}
+      version: ${{ steps.check.outputs.version }}
+      need: ${{ steps.check.outputs.need }}
+
+  make-pri-4:
+    name: Merge PRI resources
+    runs-on: windows-latest
+    needs: build-4
+    if: needs.build-4.outputs.need == 'true'
+    steps:
+      - name: Checkout ♻️
+        uses: actions/checkout@v4
+
+      - name: Download built artifact ⌛
+        uses: actions/cache/restore@v3
+        with:
+          path: output
+          key: ${{ needs.build-4.outputs.artifact }}-${{ needs.build-4.outputs.built }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
+      - name: Merge language and density resources 🧙🏻‍♂️
+        run: |
+            (Start-Process pwsh.exe -NoNewWindow -PassThru -Args "-ExecutionPolicy Bypass -File MakePri.ps1" -WorkingDirectory "${{ github.workspace }}\output\${{ needs.build-4.outputs.artifact }}").WaitForExit()
+
+      - name: Compact Images 💿
+        run: |
+         foreach ($Partition in 'system','product','system_ext','vendor') {
+             Write-Output "Optimizing of $Partition..."
+             Write-Output "SELECT VDISK FILE=`"${{ github.workspace }}\output\${{ needs.build-4.outputs.artifact }}\$Partition.vhdx`"`
+             ATTACH VDISK READONLY`
+             COMPACT VDISK`
+             DETACH VDISK" | Set-Content -Path "$Partition.txt" -Encoding Ascii
+             Start-Process -NoNewWindow -Wait "diskpart.exe" -Args "/s $Partition.txt" -RedirectStandardOutput NUL
+         }
+
+      - name: Compress Zip and Add checksum ✔️
+        id: zip
+        run: |
+          7z a -tzip ${{ needs.build-4.outputs.artifact }}.zip output\*
+          $md5Hash = $(Get-FileHash -Algorithm MD5 -Path ${{ needs.build-4.outputs.artifact }}.zip).Hash.ToLower().ToString()
+          $sha256Hash = $(Get-FileHash -Algorithm SHA256 -Path ${{ needs.build-4.outputs.artifact }}.zip).Hash.ToLower().ToString()
+          "md5=" + $md5Hash | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding UTF8 -Append
+          "sha256=" + $sha256Hash | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding UTF8 -Append
+
+      - name: Update build to release 🤌
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ needs.build-4.outputs.artifact }}.zip
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: WSA_${{ needs.build-4.outputs.version }}_arm64
+          body: |
+            - ${{ needs.build-4.outputs.artifact }}.zip
+              ```yaml
+              MD5: ${{ steps.zip.outputs.md5 }}
+              SHA256: ${{ steps.zip.outputs.sha256 }}
+              ```
+          token: ${{ secrets.PAT }}
