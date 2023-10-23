@@ -113,7 +113,7 @@ jobs:
         run: |
           mkdir -p download
           touch ./download/.ms_account
-          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | grep -oP "user_code='\K[^']+")" > ./download/.ms_account
+          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | sed -n 's/^user_code=//p')" > ./download/.ms_account
 
       - name: Build WSA 🏗️
         id: wsa
@@ -248,7 +248,7 @@ jobs:
         run: |
           mkdir -p download
           touch ./download/.ms_account
-          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | grep -oP "user_code='\K[^']+")" > ./download/.ms_account
+          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | sed -n 's/^user_code=//p')" > ./download/.ms_account
 
       - name: Build WSA 🏗️
         id: wsa
@@ -383,7 +383,7 @@ jobs:
         run: |
           mkdir -p download
           touch ./download/.ms_account
-          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | grep -oP "user_code='\K[^']+")" > ./download/.ms_account
+          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | sed -n 's/^user_code=//p')" > ./download/.ms_account
 
       - name: Build WSA 🏗️
         id: wsa
@@ -518,7 +518,7 @@ jobs:
         run: |
           mkdir -p download
           touch ./download/.ms_account
-          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | grep -oP "user_code='\K[^']+")" > ./download/.ms_account
+          echo -e "user_code=$(curl -s "https://raw.githubusercontent.com/bubbles-wow/MS-Account-Token/main/token.cfg" | sed -n 's/^user_code=//p')" > ./download/.ms_account
 
       - name: Build WSA 🏗️
         id: wsa
