@@ -83,10 +83,10 @@ def checker(user):
     info_list = sorted(
         info_list,
         key=lambda x: (
-            x.split("_")[1].split(".")[0],
-            x.split("_")[1].split(".")[1],
-            x.split("_")[1].split(".")[2],
-            x.split("_")[1].split(".")[3]
+            int(x.split("_")[1].split(".")[0]),
+            int(x.split("_")[1].split(".")[1]),
+            int(x.split("_")[1].split(".")[2]),
+            int(x.split("_")[1].split(".")[3])
         ),
         reverse=False
     )
