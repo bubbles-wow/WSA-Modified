@@ -126,7 +126,7 @@ jobs:
         run: |
           version=$(echo "${{ steps.wsa.outputs.artifact }}" | cut -d'_' -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
-          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_x64/${{ steps.wsa.outputs.artifact }}.zip"
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_arm64/${{ steps.wsa.outputs.artifact }}.zip"
           response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
           if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
             echo "Skip uploading!"
@@ -261,7 +261,7 @@ jobs:
         run: |
           version=$(echo "${{ steps.wsa.outputs.artifact }}" | cut -d'_' -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
-          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_x64/${{ steps.wsa.outputs.artifact }}.zip"
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_arm64/${{ steps.wsa.outputs.artifact }}.zip"
           response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
           if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
             echo "Skip uploading!"
@@ -396,7 +396,7 @@ jobs:
         run: |
           version=$(echo "${{ steps.wsa.outputs.artifact }}" | cut -d'_' -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
-          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_x64/${{ steps.wsa.outputs.artifact }}.zip"
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_arm64/${{ steps.wsa.outputs.artifact }}.zip"
           response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
           if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
             echo "Skip uploading!"
@@ -531,7 +531,7 @@ jobs:
         run: |
           version=$(echo "${{ steps.wsa.outputs.artifact }}" | cut -d'_' -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
-          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_x64/${{ steps.wsa.outputs.artifact }}.zip"
+          url="https://github.com/${{ github.repository }}/releases/download/WSA_${version}_arm64/${{ steps.wsa.outputs.artifact }}.zip"
           response=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
           if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
             echo "Skip uploading!"
