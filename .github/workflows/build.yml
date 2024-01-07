@@ -8,7 +8,7 @@ on:
         type: string
       root:
         type: string
-      insider:
+      release_type:
         type: string
 jobs:
   build:
@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python 🏭
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           check-latest: true
           python-version: '3.x'
@@ -49,17 +49,19 @@ jobs:
       - name: Build WSA ${{ inputs.arch }} with GApps ${{ inputs.root }} 🏗️
         id: wsa
         run: |
-          if [[ -z "${{ inputs.insider }}" ]]; then
-              RELEASE_TYPE="retail"
+          if [[ "${{ inputs.release_type }}" == "WIF" ]]; then
+              RLS_TYPE="latest"
           else
-              RELEASE_TYPE="latest"
+              RLS_TYPE="retail"
           fi
 
           mkdir -p download
-          ./scripts/build.sh --arch ${{ inputs.arch }} --release-type $RELEASE_TYPE --magisk-ver stable --gapps-brand ${{ inputs.gapps }} --root-sol ${{ inputs.root }} --custom-model redfin --remove-amazon --compress-format zip
-
+          ./scripts/build.sh --arch ${{ inputs.arch }} --release-type $RLS_TYPE --magisk-branch topjohnwu --magisk-ver stable --gapps-brand ${{ inputs.gapps }} --root-sol ${{ inputs.root }} --custom-model redfin --remove-amazon --compress-format zip
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+  
       - name: Pass to Windows 💸
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.wsa.outputs.artifact }}-${{ steps.wsa.outputs.built }}
           path: output
@@ -67,10 +69,10 @@ jobs:
       - name: Prepare release tag 🏷️
         id: date
         run: |
-           if [[ -z "${{ inputs.insider }}" ]]; then
-              echo "date=$(date +'v%Y-%m-%d')" >> $GITHUB_OUTPUT
-           else
+           if [[ "${{ inputs.release_type }}" == "WIF" ]]; then
               echo "date=WSA-Insider-Version" >> $GITHUB_OUTPUT
+           else
+              echo "date=$(date +'v%Y-%m-%d')" >> $GITHUB_OUTPUT
            fi
 
     outputs:
@@ -87,13 +89,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download built artifact ⌛
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: output
           name: ${{ needs.build.outputs.zipname }}-${{ needs.build.outputs.built }}
 
       - name: Remove unused artifact ❌
-        uses: geekyeggo/delete-artifact@v2
+        uses: geekyeggo/delete-artifact@v4
         with:
           name: ${{ needs.build.outputs.zipname }}-${{ needs.build.outputs.built }}
 

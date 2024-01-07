@@ -64,6 +64,7 @@ trap abort INT TERM
 default() {
     ARCH=x64
     RELEASE_TYPE=retail
+    MAGISK_BRANCH=topjohnwu
     MAGISK_VER=stable
     GAPPS_BRAND=MindTheGapps
     CUSTOM_MODEL=redfin
@@ -158,6 +159,12 @@ RELEASE_TYPE_MAP=(
     "latest"
 )
 
+MAGISK_BRANCH_MAP=(
+    "topjohnwu"
+    "HuskyDG"
+    "vvb2060"
+)
+
 MAGISK_VER_MAP=(
     "stable"
     "beta"
@@ -203,6 +210,7 @@ COMPRESS_FORMAT_MAP=(
 ARGUMENT_LIST=(
     "arch:"
     "release-type:"
+    "magisk-branch:"
     "magisk-ver:"
     "gapps-brand:"
     "custom-model:"
@@ -233,6 +241,7 @@ while [[ $# -gt 0 ]]; do
         --compress-format   ) COMPRESS_FORMAT="$2"; shift 2 ;;
         --after-compress    ) AFTER_COMPRESS="yes"; shift ;;
         --remove-amazon     ) REMOVE_AMAZON="yes"; shift ;;
+        --magisk-branch     ) MAGISK_BRANCH="$2"; shift 2 ;;
         --magisk-ver        ) MAGISK_VER="$2"; shift 2 ;;
         --                  ) shift; break;;
    esac
@@ -260,6 +269,7 @@ check_list() {
 
 check_list "$ARCH" "Architecture" "${ARCH_MAP[@]}"
 check_list "$RELEASE_TYPE" "Release Type" "${RELEASE_TYPE_MAP[@]}"
+check_list "$MAGISK_BRANCH" "Magisk Branch" "${MAGISK_BRANCH_MAP[@]}"
 check_list "$MAGISK_VER" "Magisk Version" "${MAGISK_VER_MAP[@]}"
 check_list "$GAPPS_BRAND" "GApps Brand" "${GAPPS_BRAND_MAP[@]}"
 check_list "$CUSTOM_MODEL" "Custom Model" "${CUSTOM_MODEL_MAP[@]}"
@@ -289,7 +299,7 @@ update_ksu_zip_name() {
     KERNEL_VER=""
     case "$WSA_MAJOR_VER" in
       "2308") KERNEL_VER="5.15.104.3";;
-      "2309") KERNEL_VER="5.15.104.4";;
+      "2309"|"2310"|"2311") KERNEL_VER="5.15.104.4";;
       *) abort "KernelSU is not supported in this WSA version: $WSA_MAJOR_VER"
     esac
     KERNELSU_ZIP_NAME=kernelsu-$ARCH-$KERNEL_VER.zip
@@ -325,7 +335,7 @@ else
     WSA_MAJOR_VER=${WSA_VER:0:4}
 fi
 if [ "$ROOT_SOL" = "magisk" ] || [ "$GAPPS_BRAND" != "none" ]; then
-    python3 generateMagiskLink.py "$MAGISK_VER" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
+    python3 generateMagiskLink.py "$MAGISK_BRANCH" "$MAGISK_VER" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" || abort
 fi
 if [ "$ROOT_SOL" = "kernelsu" ]; then
     update_ksu_zip_name
@@ -339,8 +349,9 @@ if [ "$GAPPS_BRAND" != "none" ]; then
     update_gapps_zip_name
     python3 generateGappsLink.py "$ARCH" "$DOWNLOAD_DIR" "$DOWNLOAD_CONF_NAME" "$GAPPS_ZIP_NAME" || abort
 fi
+
 echo "Download Artifacts"
-if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity=true --continue=true --allow-overwrite=true --conditional-get=true -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME"; then
+if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_download.log" -x16 -s16 -j7 -m0 --async-dns=false --check-integrity=true -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR/$DOWNLOAD_CONF_NAME"; then
     echo "We have encountered an error while downloading files."
     exit 1
 fi
@@ -733,6 +744,11 @@ echo -e "Convert images to vhdx done\n"
 
 echo "Remove signature and add scripts"
 sudo rm -rf "${WORK_DIR:?}"/wsa/"$ARCH"/\[Content_Types\].xml "$WORK_DIR/wsa/$ARCH/AppxBlockMap.xml" "$WORK_DIR/wsa/$ARCH/AppxSignature.p7x" "$WORK_DIR/wsa/$ARCH/AppxMetadata" || abort
+if [ "$ARCH" = "x64" ]; then
+    sudo rm -rf "$WORK_DIR/wsa/$ARCH/arm64/" || abort
+else
+    sudo rm -rf "$WORK_DIR/wsa/$ARCH/amd64/" || abort
+fi
 mkdir "$WORK_DIR/wsa/$ARCH/uwp"
 cp "$VCLibs_PATH" "$xaml_PATH" "$WORK_DIR/wsa/$ARCH/uwp/" || abort
 cp "$UWPVCLibs_PATH" "$xaml_PATH" "$WORK_DIR/wsa/$ARCH/uwp/" || abort
@@ -745,9 +761,9 @@ else
         sed -i -e 's@Start-Process "wsa://com.topjohnwu.magisk"@@g' "../installer/$ARCH/Install.ps1"
     elif [[ "$ROOT_SOL" = "kernelsu" ]]; then
         sed -i -e 's@wsa://com.topjohnwu.magisk@https://github.com/YT-Advanced/WSA-Script/blob/HEAD/docs/Guides/KernelSU.md@g' "../installer/$ARCH/Install.ps1"
-    elif [[ "$MAGISK_VER" = "delta" ]]; then
+    elif [[ "$MAGISK_BRANCH" = "HuskyDG" ]]; then
         sed -i -e 's@com.topjohnwu.magisk@io.github.huskydg.magisk@g' "../installer/$ARCH/Install.ps1"
-    elif [[ "$MAGISK_VER" = "alpha" ]]; then
+    elif [[ "$MAGISK_BRANCH" = "vvb2060" ]]; then
         sed -i -e 's@com.topjohnwu.magisk@io.github.vvb2060.magisk@g' "../installer/$ARCH/Install.ps1"
     fi
     if [[ "$GAPPS_BRAND" = "none" ]] && [[ "$REMOVE_AMAZON" != "yes" ]]; then
