@@ -19,7 +19,11 @@ jobs:
         with:
           fetch-depth: 0
 
+<<<<<<< HEAD
       - uses: actions/checkout@v3
+=======
+      - uses: actions/checkout@v4
+>>>>>>> 8919ff7f8d7b3351ae2a6e6e7655b97a4bccd203
         if: env.super_secret != ''
         name: Checkout using Personal Token
         with:
